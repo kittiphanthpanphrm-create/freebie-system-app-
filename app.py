@@ -316,14 +316,14 @@ with tab2:
             if lrow["SKU"] in df["sku"].values:
               idx_s = df[df["sku"] == lrow["SKU"]].index[0]
               st.session_state.df_freebie.loc[idx_s, "qty"] += diff
-            st.session_state.df_freebie_logs.loc[i, "จำนวนที่รับเข้า"] = (
+            st.session_state.df_freebie_logs.at[i, "จำนวนที่รับเข้า"] = (
                 edit_qty_val
             )
             if edit_file_val is not None:
-              st.session_state.df_freebie_logs.loc[i, "file_obj"] = (
+              st.session_state.df_freebie_logs.at[i, "file_obj"] = (
                   edit_file_val
               )
-              st.session_state.df_freebie_logs.loc[i, "ไฟล์รูป"] = (
+              st.session_state.df_freebie_logs.at[i, "ไฟล์รูป"] = (
                   edit_file_val.name
               )
             st.success("อัปเดตข้อมูล/รูปภาพเรียบร้อย!")
@@ -456,7 +456,7 @@ with tab3:
                 st.error("สต็อกคงเหลือไม่พอสำหรับการแก้ไขยอดนี้!")
               else:
                 st.session_state.df_freebie.loc[idx_s, "qty"] -= diff
-                st.session_state.df_out_logs.loc[i, "จำนวนที่แถมไป"] = (
+                st.session_state.df_out_logs.at[i, "จำนวนที่แถมไป"] = (
                     edit_q_out
                 )
                 st.success("อัปเดตตัดจ่ายเรียบร้อย!")
