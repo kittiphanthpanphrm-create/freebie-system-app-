@@ -13,9 +13,7 @@ LOG_OUT_FILE = "log_out_data.csv"
 def load_data():
   if os.path.exists(STOCK_FILE):
     df_stock = pd.read_csv(STOCK_FILE, dtype=str)
-    df_stock["qty"] = pd.to_numeric(
-        df_stock["qty"], errors="coerce"
-    ).fillna(0)
+    df_stock["qty"] = pd.to_numeric(df_stock["qty"], errors="coerce").fillna(0)
     df_stock["min_qty"] = pd.to_numeric(
         df_stock["min_qty"], errors="coerce"
     ).fillna(5)
@@ -48,9 +46,7 @@ def load_data():
 
   if os.path.exists(LOG_OUT_FILE):
     df_out = pd.read_csv(LOG_OUT_FILE, dtype=str)
-    df_out["log_id"] = pd.to_numeric(
-        df_out["log_id"], errors="coerce"
-    ).fillna(0)
+    df_out["log_id"] = pd.to_numeric(df_out["log_id"], errors="coerce").fillna(0)
     df_out["จำนวนที่แถมไป"] = pd.to_numeric(
         df_out["จำนวนที่แถมไป"], errors="coerce"
     ).fillna(0)
@@ -126,6 +122,49 @@ with st.sidebar:
         st.rerun()
       else:
         st.sidebar.error("❌ รหัสผ่านไม่ถูกต้อง (กรุณากรอก 1234)")
+
+  with st.expander("💾 สำรอง / กู้คืนข้อมูล (Backup)"):
+    if os.path.exists(STOCK_FILE):
+      with open(STOCK_FILE, "rb") as f:
+        st.download_button(
+            "⬇️ โหลด Stock.csv",
+            f,
+            file_name="stock_data.csv",
+            use_container_width=True,
+        )
+    if os.path.exists(LOG_IN_FILE):
+      with open(LOG_IN_FILE, "rb") as f:
+        st.download_button(
+            "⬇️ โหลด Log_IN.csv",
+            f,
+            file_name="log_in_data.csv",
+            use_container_width=True,
+        )
+    if os.path.exists(LOG_OUT_FILE):
+      with open(LOG_OUT_FILE, "rb") as f:
+        st.download_button(
+            "⬇️ โหลด Log_OUT.csv",
+            f,
+            file_name="log_out_data.csv",
+            use_container_width=True,
+        )
+
+    st.divider()
+    up_stock = st.file_uploader(
+        "⬆️ กู้คืน Stock.csv", type=["csv"], key="restore_stock"
+    )
+    if up_stock is not None:
+      with open(STOCK_FILE, "wb") as f:
+        f.write(up_stock.getbuffer())
+      st.success("✅ กู้คืน Stock สำเร็จ รีเฟรชหน้าเว็บ 1 ครั้ง")
+
+    up_in = st.file_uploader(
+        "⬆️ กู้คืน Log_IN.csv", type=["csv"], key="restore_in"
+    )
+    if up_in is not None:
+      with open(LOG_IN_FILE, "wb") as f:
+        f.write(up_in.getbuffer())
+      st.success("✅ กู้คืน Log_IN สำเร็จ รีเฟรชหน้าเว็บ 1 ครั้ง")
 
 tab1, tab2, tab3 = st.tabs([
     "📊 สต็อกคงเหลือ",
@@ -254,7 +293,8 @@ with tab2:
         if uploaded_file is not None:
           os.makedirs("uploads", exist_ok=True)
           file_path_save = os.path.join(
-              "uploads", f"{int(datetime.datetime.now().timestamp())}_{uploaded_file.name}"
+              "uploads",
+              f"{int(datetime.datetime.now().timestamp())}_{uploaded_file.name}",
           )
           with open(file_path_save, "wb") as f:
             f.write(uploaded_file.getbuffer())
@@ -337,7 +377,8 @@ with tab2:
             if edit_file_val is not None:
               os.makedirs("uploads", exist_ok=True)
               new_path = os.path.join(
-                  "uploads", f"{int(datetime.datetime.now().timestamp())}_{edit_file_val.name}"
+                  "uploads",
+                  f"{int(datetime.datetime.now().timestamp())}_{edit_file_val.name}",
               )
               with open(new_path, "wb") as f:
                 f.write(edit_file_val.getbuffer())
