@@ -6,30 +6,25 @@ st.set_page_config(page_title="สต็อกของแถม", page_icon="�
 
 st.title("🎁 สต็อกของแถม")
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     "📊 สต็อกคงเหลือ",
     "📥 รับเข้าของแถม (IN)",
     "📤 ตัดจ่ายตามบิล (OUT)",
-    "⚙️ จัดการสินค้า/ลบ SKU",
 ])
 
 # Initialize Session State
 if "df_freebie" not in st.session_state:
-  st.session_state.df_freebie = pd.DataFrame(
-      columns=["sku", "name", "qty", "min_qty", "location"], data=[]
-  )
-  if st.session_state.df_freebie.empty:
-    st.session_state.df_freebie = pd.DataFrame({
-        "sku": ["FB-CAT-01", "FB-DOG-02", "FB-TOY-03"],
-        "name": [
-            "ขนมแมวเลียซองทดลอง",
-            "แชมพูสุนัขขวดเล็ก",
-            "พวงกุญแจห้อยกระเป๋า",
-        ],
-        "qty": [50, 25, 15],
-        "min_qty": [10, 5, 5],
-        "location": ["ล็อก A1", "ล็อก A2", "ล็อก B1"],
-    })
+  st.session_state.df_freebie = pd.DataFrame({
+      "sku": ["FB-CAT-01", "FB-DOG-02", "FB-TOY-03"],
+      "name": [
+          "ขนมแมวเลียซองทดลอง",
+          "แชมพูสุนัขขวดเล็ก",
+          "พวงกุญแจห้อยกระเป๋า",
+      ],
+      "qty": [50, 25, 15],
+      "min_qty": [10, 5, 5],
+      "location": ["ล็อก A1", "ล็อก A2", "ล็อก B1"],
+  })
 
 if "df_freebie_logs" not in st.session_state:
   st.session_state.df_freebie_logs = pd.DataFrame(
@@ -112,67 +107,88 @@ with tab1:
           else:
             col_i4.metric("รับเข้าล่าสุด", "ยังไม่มีข้อมูล")
   else:
-    st.info("ยังไม่มีข้อมูลสินค้า กรุณาเพิ่มที่ Tab จัดการสินค้า")
+    st.info("ยังไม่มีข้อมูลสินค้า")
 
 with tab2:
-  st.subheader("📥 บันทึกรับเข้าของแถมเข้าคลัง")
-  if df.empty:
-    st.warning("⚠️ ยังไม่มีสินค้าในระบบ กรุณาเพิ่ม SKU ก่อน")
-  else:
-    display_list = (df["sku"] + " | " + df["name"]).tolist()
-    with st.form("form_in", clear_on_submit=True):
-      selected_item = st.selectbox("เลือก SKU / ชื่อของแถม", display_list)
-      if selected_item:
-        target_sku = selected_item.split(" | ")[0]
-        target_name = selected_item.split(" | ")[1]
-        default_loc = df[df["sku"] == target_sku]["location"].values[0]
+  st.subheader("📥 บันทึกรับเข้าของแถม / เพิ่ม SKU ใหม่")
+  with st.form("form_in", clear_on_submit=True):
+    is_new_sku = st.checkbox("➕ เพิ่มเป็น SKU ใหม่ (สินค้ายังไม่มีในระบบ)")
+
+    if is_new_sku:
+      target_sku = st.text_input("รหัส SKU ใหม่", placeholder="FB-NEW-01")
+      target_name = st.text_input("ชื่อสินค้า/ของแถม", placeholder="ชามข้าวแมว")
+      default_loc = "ล็อก A1"
+    else:
+      if not df.empty:
+        display_list = (df["sku"] + " | " + df["name"]).tolist()
+        selected_item = st.selectbox("เลือก SKU / ชื่อของแถม", display_list)
+        if selected_item:
+          target_sku = selected_item.split(" | ")[0]
+          target_name = selected_item.split(" | ")[1]
+          default_loc = df[df["sku"] == target_sku]["location"].values[0]
+        else:
+          target_sku, target_name, default_loc = "", "", "ล็อก A1"
       else:
-        target_sku, target_name, default_loc = "", "", ""
+        target_sku, target_name, default_loc = "", "", "ล็อก A1"
 
-      date_in = st.date_input("วันที่รับเข้า", value=datetime.date.today())
-      location_in = st.text_input("ชื่อล็อกที่จัดเก็บของแถม", value=default_loc)
-      qty_in = st.number_input("จำนวนที่รับเข้า", min_value=1, value=10)
+    date_in = st.date_input("วันที่รับเข้า", value=datetime.date.today())
+    location_in = st.text_input("ชื่อล็อกที่จัดเก็บของแถม", value=default_loc)
+    qty_in = st.number_input("จำนวนที่รับเข้า", min_value=1, value=10)
 
-      uploaded_file = st.file_uploader(
-          "📸 รูปถ่ายสินค้า (อัปโหลดจากคอม หรือ ถ่ายจากมือถือ)",
-          type=["jpg", "jpeg", "png"],
-      )
+    uploaded_file = st.file_uploader(
+        "📸 รูปถ่ายสินค้า (อัปโหลดจากคอม หรือ ถ่ายจากมือถือ)",
+        type=["jpg", "jpeg", "png"],
+    )
 
-      submit_in = st.form_submit_button("บันทึกรับเข้าของแถม")
-      if submit_in and target_sku:
-        idx = df[df["sku"] == target_sku].index[0]
+    submit_in = st.form_submit_button("บันทึกรับเข้าของแถม")
+    if submit_in and target_sku:
+      if is_new_sku:
+        new_row = pd.DataFrame([{
+            "sku": target_sku,
+            "name": target_name,
+            "qty": qty_in,
+            "min_qty": 5,
+            "location": location_in,
+        }])
+        st.session_state.df_freebie = pd.concat(
+            [st.session_state.df_freebie, new_row], ignore_index=True
+        )
+      else:
+        idx = st.session_state.df_freebie[
+            st.session_state.df_freebie["sku"] == target_sku
+        ].index[0]
         st.session_state.df_freebie.loc[idx, "qty"] += qty_in
         st.session_state.df_freebie.loc[idx, "location"] = location_in
 
-        file_name = (
-            uploaded_file.name if uploaded_file is not None else "ไม่มีรูป"
-        )
+      file_name = (
+          uploaded_file.name if uploaded_file is not None else "ไม่มีรูป"
+      )
+      current_lid = st.session_state.log_id_seq
+      st.session_state.log_id_seq += 1
 
-        current_lid = st.session_state.log_id_seq
-        st.session_state.log_id_seq += 1
+      new_log = pd.DataFrame([{
+          "log_id": current_lid,
+          "วันที่": str(date_in),
+          "SKU": target_sku,
+          "ชื่อของแถม": target_name,
+          "ชื่อล็อก": location_in,
+          "จำนวนที่รับเข้า": qty_in,
+          "file_obj": uploaded_file,
+          "ไฟล์รูป": file_name,
+      }])
+      st.session_state.df_freebie_logs = pd.concat(
+          [st.session_state.df_freebie_logs, new_log], ignore_index=True
+      )
 
-        new_log = pd.DataFrame([{
-            "log_id": current_lid,
-            "วันที่": str(date_in),
-            "SKU": target_sku,
-            "ชื่อของแถม": target_name,
-            "ชื่อล็อก": location_in,
-            "จำนวนที่รับเข้า": qty_in,
-            "file_obj": uploaded_file,
-            "ไฟล์รูป": file_name,
-        }])
-        st.session_state.df_freebie_logs = pd.concat(
-            [st.session_state.df_freebie_logs, new_log], ignore_index=True
-        )
-
-        st.success(
-            f"✅ บันทึกรับเข้า '{target_name}' จำนวน +{qty_in} ชิ้น ที่"
-            f" '{location_in}' เรียบร้อย!"
-        )
-        st.rerun()
+      st.success(
+          f"✅ บันทึกรับเข้า/สร้างใหม่ '{target_name}' จำนวน +{qty_in} ชิ้น ที่"
+          f" '{location_in}' เรียบร้อย!"
+      )
+      st.rerun()
 
   st.divider()
   st.subheader("📜 ประวัติการรับเข้าของแถม (แก้ไข/ลบได้)")
+  df = st.session_state.df_freebie
   in_logs = st.session_state.df_freebie_logs
   if not in_logs.empty and not df.empty:
     for i, lrow in in_logs.iterrows():
@@ -241,8 +257,9 @@ with tab2:
 
 with tab3:
   st.subheader("📤 ตัดจ่ายตามบิล (OUT)")
+  df = st.session_state.df_freebie
   if df.empty:
-    st.warning("⚠️ ยังไม่มีสินค้าในระบบ กรุณาเพิ่ม SKU ก่อน")
+    st.warning("⚠️ ยังไม่มีสินค้าในระบบ กรุณาเพิ่มสินค้าผ่านหน้ารับเข้าก่อน")
   else:
     with st.form("form_out", clear_on_submit=True):
       order_ref = st.text_input(
@@ -369,87 +386,3 @@ with tab3:
               st.rerun()
   else:
     st.info("ยังไม่มีประวัติการตัดจ่ายในรอบนี้")
-
-with tab4:
-  st.subheader("⚙️ จัดการ SKU สินค้า / ลบ SKU / เพิ่มสินค้าใหม่")
-
-  # เพิ่มฟอร์มสร้าง SKU ใหม่เผื่อเผลอลบหมด
-  with st.expander("➕ เพิ่ม SKU สินค้าใหม่", expanded=df.empty):
-    with st.form("form_add_sku"):
-      new_s_sku = st.text_input("รหัส SKU", placeholder="FB-NEW-01")
-      new_s_name = st.text_input("ชื่อสินค้า/ของแถม", placeholder="ชามข้าวแมว")
-      new_s_qty = st.number_input("จำนวนตั้งต้น", min_value=0, value=10)
-      new_s_min = st.number_input("จุดแจ้งเตือนขั้นต่ำ", min_value=0, value=5)
-      new_s_loc = st.text_input("ชื่อล็อกจัดเก็บ", value="ล็อก A1")
-      if st.form_submit_button("➕ เพิ่ม SKU ลงระบบ"):
-        if new_s_sku:
-          new_row = pd.DataFrame([{
-              "sku": new_s_sku,
-              "name": new_s_name,
-              "qty": new_s_qty,
-              "min_qty": new_s_min,
-              "location": new_s_loc,
-          }])
-          st.session_state.df_freebie = pd.concat(
-              [st.session_state.df_freebie, new_row], ignore_index=True
-          )
-          st.success(f"เพิ่ม SKU {new_s_sku} สำเร็จ!")
-          st.rerun()
-
-  if not df.empty:
-    target_sku_mgmt = st.selectbox(
-        "เลือก SKU ของแถมที่ต้องการจัดการ", df["sku"].tolist()
-    )
-
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-      if st.button("✏️ แก้ไขข้อมูล SKU หลัก"):
-        st.session_state["edit_target"] = target_sku_mgmt
-    with col_btn2:
-      if st.button("🗑️ ลบ SKU นี้ออกจากระบบ"):
-        st.session_state["confirm_del_target"] = target_sku_mgmt
-
-    if st.session_state.get("confirm_del_target") == target_sku_mgmt:
-      st.warning(
-          f"⚠️ คุณแน่ใจหรือไม่ที่จะลบ SKU: {target_sku_mgmt}?"
-      )
-      c_yes, c_no = st.columns(2)
-      with c_yes:
-        if st.button("✅ ยืนยันลบจริง"):
-          st.session_state.df_freebie = st.session_state.df_freebie[
-              st.session_state.df_freebie["sku"] != target_sku_mgmt
-          ].reset_index(drop=True)
-          del st.session_state["confirm_del_target"]
-          st.success("ลบ SKU เรียบร้อย!")
-          st.rerun()
-      with c_no:
-        if st.button("❌ ยกเลิกการลบ"):
-          del st.session_state["confirm_del_target"]
-          st.rerun()
-
-    if st.session_state.get("edit_target") == target_sku_mgmt and not df[
-        df["sku"] == target_sku_mgmt
-    ].empty:
-      row_idx = df[df["sku"] == target_sku_mgmt].index[0]
-      c_name = df.loc[row_idx, "name"]
-      c_qty = int(df.loc[row_idx, "qty"])
-      c_min = int(df.loc[row_idx, "min_qty"])
-      c_loc = df.loc[row_idx, "location"]
-
-      st.markdown(f"--- \n **กำลังแก้ไข SKU: {target_sku_mgmt}**")
-      with st.form("edit_form_mgmt"):
-        new_n = st.text_input("ชื่อของแถม", value=c_name)
-        new_q = st.number_input("จำนวนคงเหลือตั้งต้น", value=c_qty, min_value=0)
-        new_m = st.number_input(
-            "จุดแจ้งเตือนขั้นต่ำ", value=c_min, min_value=0
-        )
-        new_l = st.text_input("ชื่อล็อกจัดเก็บ", value=c_loc)
-
-        if st.form_submit_button("💾 บันทึกการแก้ไข"):
-          st.session_state.df_freebie.loc[row_idx, "name"] = new_n
-          st.session_state.df_freebie.loc[row_idx, "qty"] = new_q
-          st.session_state.df_freebie.loc[row_idx, "min_qty"] = new_m
-          st.session_state.df_freebie.loc[row_idx, "location"] = new_l
-          del st.session_state["edit_target"]
-          st.success("บันทึกการแก้ไขเรียบร้อย!")
-          st.rerun()
