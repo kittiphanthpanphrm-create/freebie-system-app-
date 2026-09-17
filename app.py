@@ -48,18 +48,12 @@ with tab1:
   if not low_stock.empty:
     st.warning(f"⚠️ มีของแถมใกล้หมด {len(low_stock)} รายการ กรุณาเติมสต็อก!")
 
-  # แสดงเป็นแบบการ์ดตาราง ผูกรูปภาพล่าสุดจาก log ถ้ามี
   logs_df = st.session_state.df_freebie_logs
 
   for idx, row in df.iterrows():
     with st.container(border=True):
       c_img, c_info = st.columns([1, 3])
       with c_img:
-        # ค้นหารูปจาก log ล่าสุดของ SKU นี้
-        sku_logs = logs_df[
-            (logs_df["SKU"] == row["sku"]) & (logs_df["file_obj"].notnot())
-        ]
-        # หาภาพล่าสุดที่อัปโหลด
         img_displayed = False
         if not logs_df.empty:
           sub_l = logs_df[logs_df["SKU"] == row["sku"]]
@@ -86,7 +80,6 @@ with tab1:
         col_i2.metric("จุดแจ้งเตือนขั้นต่ำ", f"{row['min_qty']} ชิ้น")
         col_i3.metric("พิกัดล็อก", row["location"])
 
-        # ดึงข้อมูลรับเข้าล่าสุดของ SKU นี้
         if not logs_df.empty and row["sku"] in logs_df["SKU"].values:
           last_log = logs_df[logs_df["SKU"] == row["sku"]].iloc[-1]
           col_i4.metric(
