@@ -46,7 +46,9 @@ def load_data():
 
   if os.path.exists(LOG_OUT_FILE):
     df_out = pd.read_csv(LOG_OUT_FILE, dtype=str)
-    df_out["log_id"] = pd.to_numeric(df_out["log_id"], errors="coerce").fillna(0)
+    df_out["log_id"] = pd.to_numeric(
+        df_out["log_id"], errors="coerce"
+    ).fillna(0)
     df_out["จำนวนที่แถมไป"] = pd.to_numeric(
         df_out["จำนวนที่แถมไป"], errors="coerce"
     ).fillna(0)
@@ -481,25 +483,76 @@ with tab3:
   st.subheader("📜 ประวัติการตัดจ่ายตามบิล (OUT)")
   if not df_out_logs.empty and not df_stock.empty:
     for i, orow in df_out_logs.iterrows():
+      item_name_str = orow.get("ชื่อของแถม", "ไม่ระบุ")
       with st.expander(
           f"Log ID: {orow['log_id']} | วันที่: {orow['วันที่']} | ออเดอร์:"
-          f" {orow['เลขที่ออเดอร์']} | แจก: -{orow['จำนวนที่แถมไป']}"
+          f" {orow['เลขที่ออเดอร์']} | สินค้า: {item_name_str} | แจก:"
+          f" -{orow['จำนวนที่แถมไป']}"
       ):
-        if st.button("🗑️ ลบรายการตัดจ่าย", key=f"del_out_{orow['log_id']}_{i}"):
-          old_qty = int(orow["จำนวนที่แถมไป"])
-          target_sku_str = str(orow["SKU"])
-          if target_sku_str in df_stock["sku"].astype(str).values:
-            idx_s = df_stock[
-                df_stock["sku"].astype(str) == target_sku_str
-            ].index[0]
-            df_stock.loc[idx_s, "qty"] = (
-                int(df_stock.loc[idx_s, "qty"]) + old_qty
-            )
-          df_out_logs = df_out_logs.drop(i).reset_index(drop=True)
+        c_ed_out, c_del_out = st.columns([3, 1])
+        with c_ed_out:
+          edit_q_out = st.number_input(
+              f"แก้จำนวนแจก (ID {orow['log_id']})",
+              min_value=1,
+              value=int(orow["จำนวนที่แถมไป"]),
+              key=f"out_qty_edit_{i}",
+          )
+          edit_order_out = st.text_input(
+              f"แก้ออเดอร์ (ID {orow['log_id']})",
+              value=str(orow["เลขที่ออเดอร์"]),
+              key=f"out_ord_edit_{i}",
+          )
+          if st.button("💾 บันทึกแก้ตัดจ่าย", key=f"save_out_edit_{i}"):
+            old_qty = int(orow["จำนวนที่แถมไป"])
+            diff = edit_q_out - old_qty
+            target_sku_str = str(orow["SKU"])
+            if (
+                diff > 0
+                and target_sku_str in df_stock["sku"].astype(str).values
+            ):
+              idx_s = df_stock[
+                  df_stock["sku"].astype(str) == target_sku_str
+              ].index[0]
+              current_stk = int(df_stock.loc[idx_s, "qty"])
+              if current_stk < diff:
+                st.error("❌ สต็อกไม่พอปรับเพิ่มจำนวนแจก!")
+                st.stop()
 
-          df_stock.to_csv(STOCK_FILE, index=False)
-          df_out_logs.to_csv(LOG_OUT_FILE, index=False)
-          st.success("คืนสต็อกและลบรายการสำเร็จ!")
-          st.rerun()
+            if target_sku_str in df_stock["sku"].astype(str).values:
+              idx_s = df_stock[
+                  df_stock["sku"].astype(str) == target_sku_str
+              ].index[0]
+              df_stock.loc[idx_s, "qty"] = (
+                  int(df_stock.loc[idx_s, "qty"]) - diff
+              )
+
+            df_out_logs.at[i, "จำนวนที่แถมไป"] = edit_q_out
+            df_out_logs.at[i, "เลขที่ออเดอร์"] = edit_order_out
+
+            df_stock.to_csv(STOCK_FILE, index=False)
+            df_out_logs.to_csv(LOG_OUT_FILE, index=False)
+            st.success("อัปเดตข้อมูลตัดจ่ายเรียบร้อย!")
+            st.rerun()
+
+        with c_del_out:
+          st.write(" ")
+          if st.button(
+              "🗑️ ลบรายการตัดจ่าย", key=f"del_out_{orow['log_id']}_{i}"
+          ):
+            old_qty = int(orow["จำนวนที่แถมไป"])
+            target_sku_str = str(orow["SKU"])
+            if target_sku_str in df_stock["sku"].astype(str).values:
+              idx_s = df_stock[
+                  df_stock["sku"].astype(str) == target_sku_str
+              ].index[0]
+              df_stock.loc[idx_s, "qty"] = (
+                  int(df_stock.loc[idx_s, "qty"]) + old_qty
+              )
+            df_out_logs = df_out_logs.drop(i).reset_index(drop=True)
+
+            df_stock.to_csv(STOCK_FILE, index=False)
+            df_out_logs.to_csv(LOG_OUT_FILE, index=False)
+            st.success("คืนสต็อกและลบรายการสำเร็จ!")
+            st.rerun()
   else:
     st.info("ยังไม่มีประวัติการตัดจ่าย")
