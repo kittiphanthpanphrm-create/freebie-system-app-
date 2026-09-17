@@ -35,6 +35,7 @@ if "df_freebie_logs" not in st.session_state:
           "ชื่อของแถม",
           "ชื่อล็อก",
           "จำนวนที่รับเข้า",
+          "file_obj",
           "ไฟล์รูป",
       ]
   )
@@ -42,11 +43,59 @@ if "df_freebie_logs" not in st.session_state:
 df = st.session_state.df_freebie
 
 with tab1:
-  st.subheader("รายการของแถมทั้งหมด")
+  st.subheader("📦 สต็อกคงเหลือและรูปภาพล่าสุดของสินค้า")
   low_stock = df[df["qty"] <= df["min_qty"]]
   if not low_stock.empty:
     st.warning(f"⚠️ มีของแถมใกล้หมด {len(low_stock)} รายการ กรุณาเติมสต็อก!")
-  st.dataframe(df, use_container_width=True)
+
+  # แสดงเป็นแบบการ์ดตาราง ผูกรูปภาพล่าสุดจาก log ถ้ามี
+  logs_df = st.session_state.df_freebie_logs
+
+  for idx, row in df.iterrows():
+    with st.container(border=True):
+      c_img, c_info = st.columns([1, 3])
+      with c_img:
+        # ค้นหารูปจาก log ล่าสุดของ SKU นี้
+        sku_logs = logs_df[
+            (logs_df["SKU"] == row["sku"]) & (logs_df["file_obj"].notnot())
+        ]
+        # หาภาพล่าสุดที่อัปโหลด
+        img_displayed = False
+        if not logs_df.empty:
+          sub_l = logs_df[logs_df["SKU"] == row["sku"]]
+          for _, l_row in sub_l.iloc[::-1].iterrows():
+            if (
+                "file_obj" in l_row
+                and l_row["file_obj"] is not None
+                and hasattr(l_row["file_obj"], "name")
+            ):
+              st.image(
+                  l_row["file_obj"], width=120, caption="ภาพรับเข้าล่าสุด"
+              )
+              img_displayed = True
+              break
+        if not img_displayed:
+          st.info("ไม่มีรูปถ่าย")
+
+      with c_info:
+        st.markdown(
+            f"### 🏷️ {row['name']} (`{row['sku']}`)"
+        )
+        col_i1, col_i2, col_i3, col_i4 = st.columns(4)
+        col_i1.metric("สต็อกคงเหลือ", f"{row['qty']} ชิ้น")
+        col_i2.metric("จุดแจ้งเตือนขั้นต่ำ", f"{row['min_qty']} ชิ้น")
+        col_i3.metric("พิกัดล็อก", row["location"])
+
+        # ดึงข้อมูลรับเข้าล่าสุดของ SKU นี้
+        if not logs_df.empty and row["sku"] in logs_df["SKU"].values:
+          last_log = logs_df[logs_df["SKU"] == row["sku"]].iloc[-1]
+          col_i4.metric(
+              "รับเข้าล่าสุด",
+              f"+{last_log['จำนวนที่รับเข้า']}",
+              delta=f"วันที่ {last_log['วันที่']}",
+          )
+        else:
+          col_i4.metric("รับเข้าล่าสุด", "ยังไม่มีข้อมูล")
 
 with tab2:
   st.subheader("📥 บันทึกรับเข้าของแถมเข้าคลัง")
@@ -63,7 +112,6 @@ with tab2:
     location_in = st.text_input("ชื่อล็อกที่จัดเก็บของแถม", value=default_loc)
     qty_in = st.number_input("จำนวนที่รับเข้า", min_value=1, value=10)
 
-    # เพิ่มช่องอัปโหลดรูป / ถ่ายจากมือถือ
     uploaded_file = st.file_uploader(
         "📸 รูปถ่ายสินค้า (อัปโหลดจากคอม หรือ ถ่ายจากมือถือ)",
         type=["jpg", "jpeg", "png"],
@@ -85,6 +133,7 @@ with tab2:
           "ชื่อของแถม": target_name,
           "ชื่อล็อก": location_in,
           "จำนวนที่รับเข้า": qty_in,
+          "file_obj": uploaded_file,
           "ไฟล์รูป": file_name,
       }])
       st.session_state.df_freebie_logs = pd.concat(
@@ -100,7 +149,10 @@ with tab2:
   st.divider()
   st.subheader("📜 ประวัติการรับเข้าของแถม")
   if not st.session_state.df_freebie_logs.empty:
-    st.dataframe(st.session_state.df_freebie_logs, use_container_width=True)
+    log_show = st.session_state.df_freebie_logs.drop(
+        columns=["file_obj"], errors="ignore"
+    )
+    st.dataframe(log_show, use_container_width=True)
   else:
     st.info("ยังไม่มีประวัติการรับเข้าในรอบนี้")
 
