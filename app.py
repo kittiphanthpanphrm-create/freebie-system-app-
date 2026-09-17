@@ -2,61 +2,104 @@ import datetime
 import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="สต็อกของแถม", page_icon="🎁", layout="wide")
+st.set_page_config(page_title="Kathi Freebie POS", page_icon="🎁", layout="wide")
 
-# Custom CSS for UI, large fonts, and mobile optimization
+# Custom CSS สไตล์แอปการ์ตูน/Modern Minimal UI
 st.markdown("""
 <style>
-    /* ปรับแต่ง Tabs ให้เด่นและใหญ่ขึ้น */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        background-color: #F8FAFC;
+    }
+
+    /* Headings */
+    h1 {
+        font-weight: 800 !important;
+        color: #0F172A;
+    }
+    h2, h3 {
+        font-weight: 700 !important;
+        color: #1E293B;
+    }
+
+    /* Tabs Styling */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 6px;
+        gap: 10px;
+        background-color: transparent;
+        padding-bottom: 10px;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 55px;
-        white-space: pre-wrap;
-        background-color: #f8f9fa;
-        border-radius: 10px 10px 0px 0px;
-        padding: 0 20px;
-        font-size: 1.1rem !important;
+        height: 52px;
+        border-radius: 14px;
+        background-color: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        padding: 0 24px;
+        font-size: 1rem !important;
         font-weight: 700 !important;
-        border: 1px solid #e9ecef;
+        color: #475569;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
     .stTabs [aria-selected="true"] {
-        background-color: #ff4b4b !important;
+        background-color: #4F46E5 !important;
         color: white !important;
-        border-color: #ff4b4b !important;
+        border-color: #4F46E5 !important;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
     }
 
-    /* ขยายขนาดตัวเลข Metric ให้ใหญ่สะใจ */
+    /* Cards / Containers */
+    div[data-testid="stVerticalBlock"] > div[style*="border: 1px solid"] {
+        border-radius: 16px !important;
+        border: 1px solid #E2E8F0 !important;
+        background-color: #FFFFFF !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        padding: 16px;
+    }
+
+    /* Metrics */
     div[data-testid="stMetricValue"] {
-        font-size: 2.2rem !important;
+        font-size: 1.8rem !important;
         font-weight: 800 !important;
-        color: #1f1f1f;
+        color: #0F172A;
     }
     div[data-testid="stMetricLabel"] {
-        font-size: 1.05rem !important;
+        font-size: 0.85rem !important;
         font-weight: 600 !important;
-        color: #555555;
+        color: #64748B;
     }
 
-    /* การ์ดสินค้าให้ดูนุ่มนวล มีเงาเล็กน้อย */
-    .stContainer {
+    /* Buttons */
+    .stButton button {
         border-radius: 12px !important;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        font-weight: 700 !important;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+    }
+    .stButton button[kind="primary"] {
+        background-color: #4F46E5 !important;
+        border: none;
+    }
+    .stButton button[kind="primary"]:hover {
+        background-color: #4338CA !important;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
     }
 
-    /* Responsive สำหรับมือถือ */
+    /* Input Fields */
+    input, select, textarea {
+        border-radius: 10px !important;
+    }
+
+    /* Mobile Responsive */
     @media (max-width: 640px) {
-        h1 { font-size: 1.8rem !important; }
-        h2 { font-size: 1.5rem !important; }
-        h3 { font-size: 1.25rem !important; }
-        div[data-testid="stMetricValue"] {
-            font-size: 1.6rem !important;
-        }
+        h1 { font-size: 1.5rem !important; }
         .stTabs [data-baseweb="tab"] {
-            font-size: 0.95rem !important;
-            padding: 0 10px;
-            height: 48px;
+            font-size: 0.85rem !important;
+            padding: 0 12px;
+            height: 44px;
+        }
+        div[data-testid="stMetricValue"] {
+            font-size: 1.4rem !important;
         }
     }
 </style>
@@ -64,13 +107,13 @@ st.markdown("""
 
 st.title("🎁 ระบบจัดการสต็อกของแถม")
 
-# ปุ่มรีเซ็ตข้อมูลล้างค่าทั้งหมด (ต้องกรอกรหัส 1234)
+# Sidebar ตั้งค่าระบบ (ล็อก PIN 1234)
 with st.sidebar:
-  st.subheader("⚙️ ตั้งค่าระบบ")
+  st.markdown("### ⚙️ ตั้งค่าระบบ")
   reset_pin = st.text_input(
       "รหัสยืนยันรีเซ็ต (1234)", type="password", key="sidebar_reset_pin"
   )
-  if st.button("🗑️ รีเซ็ต/ล้างข้อมูลทั้งหมดในระบบ"):
+  if st.button("🗑️ รีเซ็ต/ล้างข้อมูลทั้งหมด", use_container_width=True):
     if reset_pin == "1234":
       st.session_state["df_freebie"] = pd.DataFrame(
           columns=["sku", "name", "qty", "min_qty", "location"]
@@ -109,7 +152,7 @@ tab1, tab2, tab3 = st.tabs([
     "📤 ตัดจ่ายตามบิล (OUT)",
 ])
 
-# Initialize Session State (Empty State - No default mock SKUs)
+# Initialize Session State (Empty State)
 if "df_freebie" not in st.session_state:
   st.session_state.df_freebie = pd.DataFrame(
       columns=["sku", "name", "qty", "min_qty", "location"]
@@ -161,7 +204,7 @@ with tab1:
 
     for idx, row in df.iterrows():
       with st.container(border=True):
-        c_img, c_info = st.columns([1, 3])
+        c_img, c_info = st.columns([1, 3], gap="medium")
         with c_img:
           img_displayed = False
           if not logs_df.empty:
@@ -181,7 +224,7 @@ with tab1:
             st.info("ไม่มีรูปถ่าย")
 
         with c_info:
-          st.markdown(f"### 🏷️ {row['name']} (`{row['sku']}`)")
+          st.markdown(f"### 🏷️ {row['name']} `[{row['sku']}]`")
           col_i1, col_i2, col_i3, col_i4 = st.columns(4)
           col_i1.metric("สต็อกคงเหลือ", f"{row['qty']} ชิ้น")
           col_i2.metric("จุดแจ้งเตือนต่ำ", f"{row['min_qty']} ชิ้น")
@@ -197,7 +240,7 @@ with tab1:
           else:
             col_i4.metric("รับเข้าล่าสุด", "ยังไม่มีข้อมูล")
   else:
-    st.info("ยังไม่มีข้อมูลสินค้า กรุณาเพิ่มที่หน้ารับเข้าด้านล่าง")
+    st.info("✨ ยังไม่มีข้อมูลสินค้า กรุณาเพิ่มที่หน้ารับเข้าด้านบนได้เลยครับ")
 
 with tab2:
   st.subheader("📥 บันทึกรับเข้าของแถม / เพิ่ม SKU ใหม่")
@@ -223,7 +266,7 @@ with tab2:
       target_name = selected_item.split(" | ")[1]
       default_loc = df[df["sku"] == target_sku]["location"].values[0]
 
-  with st.form("form_in"):
+  with st.form("form_in", clear_on_submit=False):
     date_in = st.date_input("วันที่รับเข้า", value=datetime.date.today())
     location_in = st.text_input("ชื่อล็อกที่จัดเก็บของแถม", value=default_loc)
     qty_in = st.number_input("จำนวนที่รับเข้า", min_value=1, value=10)
@@ -233,7 +276,9 @@ with tab2:
         type=["jpg", "jpeg", "png"],
     )
 
-    submit_in = st.form_submit_button("💾 บันทึกรับเข้าของแถม")
+    submit_in = st.form_submit_button(
+        "💾 บันทึกรับเข้าของแถม", type="primary", use_container_width=True
+    )
 
     if submit_in:
       if not target_sku or not target_name:
@@ -400,7 +445,9 @@ with tab3:
       )
       qty_out = st.number_input("จำนวนที่แถมไป", min_value=1, value=1)
 
-      submit_out = st.form_submit_button("ยืนยันตัดสต็อกของแถม")
+      submit_out = st.form_submit_button(
+          "ยืนยันตัดสต็อกของแถม", type="primary", use_container_width=True
+      )
       if submit_out and target_sku_out:
         current_q = df[df["sku"] == target_sku_out]["qty"].values[0]
         if current_q >= qty_out:
