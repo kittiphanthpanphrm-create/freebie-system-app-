@@ -64,37 +64,44 @@ st.markdown("""
 
 st.title("🎁 ระบบจัดการสต็อกของแถม")
 
-# ปุ่มรีเซ็ตข้อมูลล้างค่าทั้งหมด (เผื่อเคลียร์ session เก่า)
+# ปุ่มรีเซ็ตข้อมูลล้างค่าทั้งหมด (ต้องกรอกรหัส 1234)
 with st.sidebar:
   st.subheader("⚙️ ตั้งค่าระบบ")
+  reset_pin = st.text_input(
+      "รหัสยืนยันรีเซ็ต (1234)", type="password", key="sidebar_reset_pin"
+  )
   if st.button("🗑️ รีเซ็ต/ล้างข้อมูลทั้งหมดในระบบ"):
-    st.session_state["df_freebie"] = pd.DataFrame(
-        columns=["sku", "name", "qty", "min_qty", "location"]
-    )
-    st.session_state["df_freebie_logs"] = pd.DataFrame(
-        columns=[
-            "log_id",
-            "วันที่",
-            "SKU",
-            "ชื่อของแถม",
-            "ชื่อล็อก",
-            "จำนวนที่รับเข้า",
-            "file_obj",
-            "ไฟล์รูป",
-        ]
-    )
-    st.session_state["df_out_logs"] = pd.DataFrame(
-        columns=[
-            "log_id",
-            "วันที่",
-            "เลขที่ออเดอร์",
-            "SKU",
-            "ชื่อของแถม",
-            "ชื่อล็อก",
-            "จำนวนที่แถมไป",
-        ]
-    )
-    st.rerun()
+    if reset_pin == "1234":
+      st.session_state["df_freebie"] = pd.DataFrame(
+          columns=["sku", "name", "qty", "min_qty", "location"]
+      )
+      st.session_state["df_freebie_logs"] = pd.DataFrame(
+          columns=[
+              "log_id",
+              "วันที่",
+              "SKU",
+              "ชื่อของแถม",
+              "ชื่อล็อก",
+              "จำนวนที่รับเข้า",
+              "file_obj",
+              "ไฟล์รูป",
+          ]
+      )
+      st.session_state["df_out_logs"] = pd.DataFrame(
+          columns=[
+              "log_id",
+              "วันที่",
+              "เลขที่ออเดอร์",
+              "SKU",
+              "ชื่อของแถม",
+              "ชื่อล็อก",
+              "จำนวนที่แถมไป",
+          ]
+      )
+      st.sidebar.success("✅ รีเซ็ตระบบสำเร็จ")
+      st.rerun()
+    else:
+      st.sidebar.error("❌ รหัสรีเซ็ตไม่ถูกต้อง (กรุณากรอก 1234)")
 
 tab1, tab2, tab3 = st.tabs([
     "📊 สต็อกคงเหลือ",
