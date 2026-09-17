@@ -4,7 +4,65 @@ import streamlit as st
 
 st.set_page_config(page_title="สต็อกของแถม", page_icon="🎁", layout="wide")
 
-st.title("🎁 สต็อกของแถม")
+# Custom CSS for UI, large fonts, and mobile optimization
+st.markdown("""
+<style>
+    /* ปรับแต่ง Tabs ให้เด่นและใหญ่ขึ้น */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 6px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 55px;
+        white-space: pre-wrap;
+        background-color: #f8f9fa;
+        border-radius: 10px 10px 0px 0px;
+        padding: 0 20px;
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        border: 1px solid #e9ecef;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #ff4b4b !important;
+        color: white !important;
+        border-color: #ff4b4b !important;
+    }
+
+    /* ขยายขนาดตัวเลข Metric ให้ใหญ่สะใจ */
+    div[data-testid="stMetricValue"] {
+        font-size: 2.2rem !important;
+        font-weight: 800 !important;
+        color: #1f1f1f;
+    }
+    div[data-testid="stMetricLabel"] {
+        font-size: 1.05rem !important;
+        font-weight: 600 !important;
+        color: #555555;
+    }
+
+    /* การ์ดสินค้าให้ดูนุ่มนวล มีเงาเล็กน้อย */
+    .stContainer {
+        border-radius: 12px !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    /* Responsive สำหรับมือถือ */
+    @media (max-width: 640px) {
+        h1 { font-size: 1.8rem !important; }
+        h2 { font-size: 1.5rem !important; }
+        h3 { font-size: 1.25rem !important; }
+        div[data-testid="stMetricValue"] {
+            font-size: 1.6rem !important;
+        }
+        .stTabs [data-baseweb="tab"] {
+            font-size: 0.95rem !important;
+            padding: 0 10px;
+            height: 48px;
+        }
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("🎁 ระบบจัดการสต็อกของแถม")
 
 tab1, tab2, tab3 = st.tabs([
     "📊 สต็อกคงเหลือ",
@@ -84,7 +142,7 @@ with tab1:
                   and hasattr(l_row["file_obj"], "name")
               ):
                 st.image(
-                    l_row["file_obj"], width=120, caption="ภาพรับเข้าล่าสุด"
+                    l_row["file_obj"], width=130, caption="ภาพรับเข้าล่าสุด"
                 )
                 img_displayed = True
                 break
@@ -95,7 +153,7 @@ with tab1:
           st.markdown(f"### 🏷️ {row['name']} (`{row['sku']}`)")
           col_i1, col_i2, col_i3, col_i4 = st.columns(4)
           col_i1.metric("สต็อกคงเหลือ", f"{row['qty']} ชิ้น")
-          col_i2.metric("จุดแจ้งเตือนขั้นต่ำ", f"{row['min_qty']} ชิ้น")
+          col_i2.metric("จุดแจ้งเตือนต่ำ", f"{row['min_qty']} ชิ้น")
           col_i3.metric("พิกัดล็อก", row["location"])
 
           if not logs_df.empty and row["sku"] in logs_df["SKU"].values:
