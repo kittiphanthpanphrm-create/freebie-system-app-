@@ -40,6 +40,18 @@ if "df_freebie_logs" not in st.session_state:
       ]
   )
 
+if "df_out_logs" not in st.session_state:
+  st.session_state.df_out_logs = pd.DataFrame(
+      columns=[
+          "วันที่",
+          "เลขที่ออเดอร์",
+          "SKU",
+          "ชื่อของแถม",
+          "ชื่อล็อก",
+          "จำนวนที่แถมไป",
+      ]
+  )
+
 df = st.session_state.df_freebie
 
 with tab1:
@@ -72,9 +84,7 @@ with tab1:
           st.info("ไม่มีรูปถ่าย")
 
       with c_info:
-        st.markdown(
-            f"### 🏷️ {row['name']} (`{row['sku']}`)"
-        )
+        st.markdown(f"### 🏷️ {row['name']} (`{row['sku']}`)")
         col_i1, col_i2, col_i3, col_i4 = st.columns(4)
         col_i1.metric("สต็อกคงเหลือ", f"{row['qty']} ชิ้น")
         col_i2.metric("จุดแจ้งเตือนขั้นต่ำ", f"{row['min_qty']} ชิ้น")
@@ -150,26 +160,63 @@ with tab2:
     st.info("ยังไม่มีประวัติการรับเข้าในรอบนี้")
 
 with tab3:
-  st.subheader("ตัดสต็อกของแถมผูกกับบิลขายหลัก")
-  with st.form("form_out"):
+  st.subheader("📤 ตัดจ่ายตามบิล (OUT)")
+  with st.form("form_out", clear_on_submit=True):
     order_ref = st.text_input(
         "เลขที่ออเดอร์ / Order Ref", placeholder="POS-20260901-001"
     )
-    sku_out = st.selectbox("เลือกของแถมแถมท้ายบิล", df["sku"].tolist())
-    qty_out = st.number_input("จำนวนที่แจก", min_value=1, value=1)
+    display_list_out = (df["sku"] + " | " + df["name"]).tolist()
+    selected_item_out = st.selectbox(
+        "เลือก SKU / ชื่อของแถม", display_list_out
+    )
+
+    target_sku_out = selected_item_out.split(" | ")[0]
+    target_name_out = selected_item_out.split(" | ")[1]
+
+    default_loc_out = df[df["sku"] == target_sku_out]["location"].values[0]
+
+    date_out = st.date_input("วันที่ตัดจ่าย", value=datetime.date.today())
+    location_out = st.text_input(
+        "ชื่อล็อกที่จัดของแถม", value=default_loc_out
+    )
+    qty_out = st.number_input("จำนวนที่แถมไป", min_value=1, value=1)
+
     submit_out = st.form_submit_button("ยืนยันตัดสต็อกของแถม")
     if submit_out:
-      current_q = df[df["sku"] == sku_out]["qty"].values[0]
+      current_q = df[df["sku"] == target_sku_out]["qty"].values[0]
       if current_q >= qty_out:
-        idx = df[df["sku"] == sku_out].index[0]
+        idx = df[df["sku"] == target_sku_out].index[0]
+        # คำนวณบวกลบหักล้างกับสต็อกหลักทันที
         st.session_state.df_freebie.loc[idx, "qty"] -= qty_out
+        st.session_state.df_freebie.loc[idx, "location"] = location_out
+
+        # บันทึกประวัติการตัดจ่ายตามบิล
+        new_out_log = pd.DataFrame([{
+            "วันที่": str(date_out),
+            "เลขที่ออเดอร์": order_ref,
+            "SKU": target_sku_out,
+            "ชื่อของแถม": target_name_out,
+            "ชื่อล็อก": location_out,
+            "จำนวนที่แถมไป": qty_out,
+        }])
+        st.session_state.df_out_logs = pd.concat(
+            [st.session_state.df_out_logs, new_out_log], ignore_index=True
+        )
+
         st.success(
-            f"ตัดของแถม {sku_out} จำนวน {qty_out} สำเร็จ (ผูกบิล"
-            f" {order_ref})"
+            f"✅ ตัดจ่าย '{target_name_out}' จำนวน -{qty_out} ชิ้น (ออเดอร์"
+            f" {order_ref}, ล็อก {location_out}) เรียบร้อย!"
         )
         st.rerun()
       else:
         st.error("❌ สต็อกของแถมไม่พอแจก!")
+
+  st.divider()
+  st.subheader("📜 ประวัติการตัดจ่ายตามบิล (OUT)")
+  if not st.session_state.df_out_logs.empty:
+    st.dataframe(st.session_state.df_out_logs, use_container_width=True)
+  else:
+    st.info("ยังไม่มีประวัติการตัดจ่ายในรอบนี้")
 
 with tab4:
   st.subheader("⚙️ แก้ไขหรือลบรายการของแถม")
