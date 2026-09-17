@@ -13,12 +13,11 @@ LOG_OUT_FILE = "log_out_data.csv"
 def load_data():
   if os.path.exists(STOCK_FILE):
     df_stock = pd.read_csv(STOCK_FILE, dtype=str)
-    # 
-    df_stock["qty"] = pd.to_numeric(df_stock["qty"], errors="fillna").fillna(
-        0
-    )
+    df_stock["qty"] = pd.to_numeric(
+        df_stock["qty"], errors="coerce"
+    ).fillna(0)
     df_stock["min_qty"] = pd.to_numeric(
-        df_stock["min_qty"], errors="fillna"
+        df_stock["min_qty"], errors="coerce"
     ).fillna(5)
   else:
     df_stock = pd.DataFrame(
