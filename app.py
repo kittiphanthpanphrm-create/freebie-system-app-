@@ -257,23 +257,16 @@ with tab2:
         st.rerun()
 
   st.divider()
-  st.subheader("📜 ประวัติการรับเข้าของแถม (แก้ไขจำนวน/เปลี่ยนรูปได้)")
+  st.subheader("📜 ประวัติการรับเข้าของแถม (แก้ไข/ลบได้)")
   df = st.session_state.df_freebie
   in_logs = st.session_state.df_freebie_logs
   if not in_logs.empty and not df.empty:
     for i, lrow in in_logs.iterrows():
-      file_caption = f"รูปเดิม: {lrow.get('ไฟล์รูป', 'ไม่มีรูป')}"
       with st.expander(
           f"Log ID: {lrow['log_id']} | วันที่: {lrow['วันที่']} | SKU:"
           f" {lrow['SKU']} | รับเข้า: +{lrow['จำนวนที่รับเข้า']}"
       ):
-        c_img_prev, c_ed1, c_ed2, c_del = st.columns([1.5, 2, 2, 1.5])
-        with c_img_prev:
-          if "file_obj" in lrow and lrow["file_obj"] is not None:
-            st.image(lrow["file_obj"], width=90, caption="รูปปัจจุบัน")
-          else:
-            st.caption("ไม่มีรูป")
-
+        c_ed1, c_ed2, c_del = st.columns([2, 2, 2])
         with c_ed1:
           edit_qty_val = st.number_input(
               f"แก้จำนวน (ID {lrow['log_id']})",
@@ -281,12 +274,6 @@ with tab2:
               value=int(lrow["จำนวนที่รับเข้า"]),
               key=f"in_qty_{lrow['log_id']}",
           )
-          edit_file_val = st.file_uploader(
-              "แนบ/เปลี่ยนรูปใหม่",
-              type=["jpg", "jpeg", "png"],
-              key=f"in_file_{lrow['log_id']}",
-          )
-
         with c_ed2:
           st.write(" ")
           st.write(" ")
@@ -299,31 +286,23 @@ with tab2:
             st.session_state.df_freebie_logs.loc[i, "จำนวนที่รับเข้า"] = (
                 edit_qty_val
             )
-            if edit_file_val is not None:
-              st.session_state.df_freebie_logs.loc[i, "file_obj"] = (
-                  edit_file_val
-              )
-              st.session_state.df_freebie_logs.loc[i, "ไฟล์รูป"] = (
-                  edit_file_val.name
-              )
-            st.success("อัปเดตข้อมูล/รูปภาพเรียบร้อย!")
+            st.success("อัปเดตรับเข้าเรียบร้อย!")
             st.rerun()
-
         with c_del:
           st.write(" ")
           st.write(" ")
-          if st.button("🗑️ ลบรายการ", key=f"del_in_{lrow['log_id']}"):
+          if st.button("🗑️ ลบรายการรับเข้า", key=f"del_in_{lrow['log_id']}"):
             st.session_state[f"confirm_del_in_{lrow['log_id']}"] = True
 
         if st.session_state.get(f"confirm_del_in_{lrow['log_id']}", False):
           st.warning(
-              f"⚠️ ยืนยันลบ Log รับเข้า ID {lrow['log_id']}? (คืนสต็อก"
-              f" -{lrow['จำนวนที่รับเข้า']})"
+              f"⚠️ ยืนยันลบ Log รับเข้า ID {lrow['log_id']}?"
+              f" (จะหักสต็อกคืน -{lrow['จำนวนที่รับเข้า']})"
           )
           cy, cn = st.columns(2)
           with cy:
             if st.button(
-                "✅ ยืนยันลบ", key=f"yes_del_in_{lrow['log_id']}"
+                "✅ ยืนยันลบรับเข้า", key=f"yes_del_in_{lrow['log_id']}"
             ):
               old_qty = int(lrow["จำนวนที่รับเข้า"])
               if lrow["SKU"] in df["sku"].values:
