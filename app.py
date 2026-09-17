@@ -6,9 +6,12 @@ st.set_page_config(page_title="สต็อกของแถม", page_icon="�
 
 st.title("🎁 สต็อกของแถม")
 
-tab1, tab2, tab3 = st.tabs(
-    ["📊 สต็อกคงเหลือ", "📥 รับเข้าของแถม (IN)", "📤 ตัดจ่ายตามบิล (OUT)"]
-)
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📊 สต็อกคงเหลือ",
+    "📥 รับเข้าของแถม (IN)",
+    "📤 ตัดจ่ายตามบิล (OUT)",
+    "⚙️ จัดการ/แก้ไข/ลบ",
+])
 
 # Initialize Session State
 if "df_freebie" not in st.session_state:
@@ -41,15 +44,12 @@ with tab1:
 with tab2:
   st.subheader("📥 บันทึกรับเข้าของแถมเข้าคลัง")
   with st.form("form_in", clear_on_submit=True):
-    # สร้างตัวเลือกแสดง SKU + ชื่อของแถม
     display_list = (df["sku"] + " | " + df["name"]).tolist()
     selected_item = st.selectbox("เลือก SKU / ชื่อของแถม", display_list)
 
-    # ดึงค่า SKU และชื่อของแถมที่เลือก
     target_sku = selected_item.split(" | ")[0]
     target_name = selected_item.split(" | ")[1]
 
-    # ดึงค่าล็อกเดิมมาเป็นค่าเริ่มต้น (ถ้ามี)
     default_loc = df[df["sku"] == target_sku]["location"].values[0]
 
     date_in = st.date_input("วันที่รับเข้า", value=datetime.date.today())
@@ -58,12 +58,10 @@ with tab2:
 
     submit_in = st.form_submit_button("บันทึกรับเข้าของแถม")
     if submit_in:
-      # อัปเดตยอดสต็อกและล็อกในตารางหลัก
       idx = df[df["sku"] == target_sku].index[0]
       st.session_state.df_freebie.loc[idx, "qty"] += qty_in
       st.session_state.df_freebie.loc[idx, "location"] = location_in
 
-      # บันทึกประวัติการรับเข้า
       new_log = pd.DataFrame([{
           "วันที่": str(date_in),
           "SKU": target_sku,
@@ -109,3 +107,61 @@ with tab3:
         st.rerun()
       else:
         st.error("❌ สต็อกของแถมไม่พอแจก!")
+
+with tab4:
+  st.subheader("⚙️ แก้ไขหรือลบรายการของแถม")
+  target_sku_mgmt = st.selectbox(
+      "เลือก SKU ของแถมที่ต้องการจัดการ", df["sku"].tolist()
+  )
+
+  col_btn1, col_btn2 = st.columns(2)
+  with col_btn1:
+    if st.button("✏️ แก้ไขข้อมูล"):
+      st.session_state["edit_target"] = target_sku_mgmt
+  with col_btn2:
+    if st.button("🗑️ ลบรายการนี้"):
+      st.session_state["confirm_del_target"] = target_sku_mgmt
+
+  # ส่วนยืนยันการลบ
+  if st.session_state.get("confirm_del_target") == target_sku_mgmt:
+    st.warning(
+        f"⚠️ คุณแน่ใจหรือไม่ที่จะลบ SKU: {target_sku_mgmt}"
+        f" ({df[df['sku'] == target_sku_mgmt]['name'].values[0]})?"
+    )
+    c_yes, c_no = st.columns(2)
+    with c_yes:
+      if st.button("✅ ยืนยันลบจริง"):
+        st.session_state.df_freebie = st.session_state.df_freebie[
+            st.session_state.df_freebie["sku"] != target_sku_mgmt
+        ].reset_index(drop=True)
+        del st.session_state["confirm_del_target"]
+        st.success("ลบรายการเรียบร้อย!")
+        st.rerun()
+    with c_no:
+      if st.button("❌ ยกเลิกการลบ"):
+        del st.session_state["confirm_del_target"]
+        st.rerun()
+
+  # ส่วนฟอร์มแก้ไขข้อมูล
+  if st.session_state.get("edit_target") == target_sku_mgmt:
+    row_idx = df[df["sku"] == target_sku_mgmt].index[0]
+    c_name = df.loc[row_idx, "name"]
+    c_qty = int(df.loc[row_idx, "qty"])
+    c_min = int(df.loc[row_idx, "min_qty"])
+    c_loc = df.loc[row_idx, "location"]
+
+    st.markdown(f"--- \n **กำลังแก้ไข SKU: {target_sku_mgmt}**")
+    with st.form("edit_form_mgmt"):
+      new_n = st.text_input("ชื่อของแถม", value=c_name)
+      new_q = st.number_input("จำนวนคงเหลือ", value=c_qty, min_value=0)
+      new_m = st.number_input("จุดแจ้งเตือนขั้นต่ำ", value=c_min, min_value=0)
+      new_l = st.text_input("ชื่อล็อกจัดเก็บ", value=c_loc)
+
+      if st.form_submit_button("💾 บันทึกการแก้ไข"):
+        st.session_state.df_freebie.loc[row_idx, "name"] = new_n
+        st.session_state.df_freebie.loc[row_idx, "qty"] = new_q
+        st.session_state.df_freebie.loc[row_idx, "min_qty"] = new_m
+        st.session_state.df_freebie.loc[row_idx, "location"] = new_l
+        del st.session_state["edit_target"]
+        st.success("บันทึกการแก้ไขเรียบร้อย!")
+        st.rerun()
