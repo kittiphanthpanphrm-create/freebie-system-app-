@@ -5,23 +5,32 @@ import streamlit as st
 
 st.set_page_config(page_title="Kathi Freebie POS", page_icon="🎁", layout="wide")
 
-# ชื่อไฟล์สำหรับเก็บบันทึกข้อมูลถาวรบน Cloud
 STOCK_FILE = "stock_data.csv"
 LOG_IN_FILE = "log_in_data.csv"
 LOG_OUT_FILE = "log_out_data.csv"
 
 
-# ฟังก์ชันโหลดข้อมูลจากไฟล์ CSV (ถ้ายังไม่มีให้สร้าง DataFrame เปล่า)
 def load_data():
   if os.path.exists(STOCK_FILE):
-    df_stock = pd.read_csv(STOCK_FILE)
+    df_stock = pd.read_csv(STOCK_FILE, dtype=str)
+    # 
+    df_stock["qty"] = pd.to_numeric(df_stock["qty"], errors="fillna").fillna(
+        0
+    )
+    df_stock["min_qty"] = pd.to_numeric(
+        df_stock["min_qty"], errors="fillna"
+    ).fillna(5)
   else:
     df_stock = pd.DataFrame(
         columns=["sku", "name", "qty", "min_qty", "location"]
     )
 
   if os.path.exists(LOG_IN_FILE):
-    df_in = pd.read_csv(LOG_IN_FILE)
+    df_in = pd.read_csv(LOG_IN_FILE, dtype=str)
+    df_in["log_id"] = pd.to_numeric(df_in["log_id"], errors="coerce").fillna(0)
+    df_in["จำนวนที่รับเข้า"] = pd.to_numeric(
+        df_in["จำนวนที่รับเข้า"], errors="coerce"
+    ).fillna(0)
     if "file_obj" not in df_in.columns:
       df_in["file_obj"] = None
   else:
@@ -39,7 +48,13 @@ def load_data():
     )
 
   if os.path.exists(LOG_OUT_FILE):
-    df_out = pd.read_csv(LOG_OUT_FILE)
+    df_out = pd.read_csv(LOG_OUT_FILE, dtype=str)
+    df_out["log_id"] = pd.to_numeric(
+        df_out["log_id"], errors="coerce"
+    ).fillna(0)
+    df_out["จำนวนที่แถมไป"] = pd.to_numeric(
+        df_out["จำนวนที่แถมไป"], errors="coerce"
+    ).fillna(0)
   else:
     df_out = pd.DataFrame(
         columns=[
@@ -56,10 +71,8 @@ def load_data():
   return df_stock, df_in, df_out
 
 
-# โหลดข้อมูลเข้าตัวแปรหลัก
 df_stock, df_freebie_logs, df_out_logs = load_data()
 
-# Custom CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
@@ -93,7 +106,6 @@ st.markdown("""
 
 st.title("🎁 ระบบจัดการสต็อกของแถม")
 
-# Sidebar ตั้งค่าระบบ
 with st.sidebar:
   st.markdown("### ⚙️ ตั้งค่าระบบ")
   with st.expander("🔐 ตั้งค่ารีเซ็ตข้อมูล"):
@@ -125,7 +137,10 @@ tab1, tab2, tab3 = st.tabs([
 with tab1:
   st.subheader("📦 สต็อกคงเหลือและรูปภาพล่าสุดของสินค้า")
   if not df_stock.empty:
-    low_stock = df_stock[df_stock["qty"] <= df_stock["min_qty"]]
+    low_stock = df_stock[
+        pd.to_numeric(df_stock["qty"], errors="coerce")
+        <= pd.to_numeric(df_stock["min_qty"], errors="coerce")
+    ]
     if not low_stock.empty:
       st.warning(
           f"⚠️ มีของแถมใกล้หมด {len(low_stock)} รายการ กรุณาเติมสต็อก!"
@@ -137,7 +152,7 @@ with tab1:
         with c_img:
           img_displayed = False
           if not df_freebie_logs.empty:
-            sub_l = df_freebie_logs[df_freebie_logs["SKU"] == row["sku"]]
+            sub_l = df_freebie_logs[df_freebie_logs["SKU"] == str(row["sku"])]
             for _, l_row in sub_l.iloc[::-1].iterrows():
               if (
                   "file_obj" in l_row
@@ -161,10 +176,10 @@ with tab1:
 
           if (
               not df_freebie_logs.empty
-              and row["sku"] in df_freebie_logs["SKU"].values
+              and str(row["sku"]) in df_freebie_logs["SKU"].values
           ):
             last_log = df_freebie_logs[
-                df_freebie_logs["SKU"] == row["sku"]
+                df_freebie_logs["SKU"] == str(row["sku"])
             ].iloc[-1]
             col_i4.metric(
                 "รับเข้าล่าสุด",
@@ -191,7 +206,9 @@ with tab2:
     target_name = st.text_input("ชื่อสินค้า/ของแถม*", placeholder="ชามข้าวแมว")
     default_loc = st.text_input("ชื่อล็อกจัดเก็บ", value="ล็อก A1")
   else:
-    display_list = (df_stock["sku"] + " | " + df_stock["name"]).tolist()
+    display_list = (
+        df_stock["sku"].astype(str) + " | " + df_stock["name"].astype(str)
+    ).tolist()
     selected_item = st.selectbox("เลือก SKU / ชื่อของแถม", display_list)
     if selected_item:
       target_sku = selected_item.split(" | ")[0]
@@ -216,19 +233,19 @@ with tab2:
       if not target_sku or not target_name:
         st.error("❌ กรุณากรอกรหัส SKU และชื่อสินค้าให้ครบถ้วน")
       else:
-        # อัปเดตสต็อกหลัก
-        if target_sku not in df_stock["sku"].values:
+        target_sku = str(target_sku)
+        if target_sku not in df_stock["sku"].astype(str).values:
           new_row = pd.DataFrame([{
               "sku": target_sku,
               "name": target_name,
-              "qty": qty_in,
+              "qty": int(qty_in),
               "min_qty": 5,
               "location": location_in,
           }])
           df_stock = pd.concat([df_stock, new_row], ignore_index=True)
         else:
-          idx = df_stock[df_stock["sku"] == target_sku].index[0]
-          df_stock.loc[idx, "qty"] += qty_in
+          idx = df_stock[df_stock["sku"].astype(str) == target_sku].index[0]
+          df_stock.loc[idx, "qty"] = int(df_stock.loc[idx, "qty"]) + int(qty_in)
           df_stock.loc[idx, "location"] = location_in
 
         file_name = (
@@ -242,8 +259,12 @@ with tab2:
             f.write(uploaded_file.getbuffer())
 
         current_lid = (
-            int(df_freebie_logs["log_id"].max()) + 1
-            if not df_freebie_logs.empty and pd.notna(df_freebie_logs["log_id"].max())
+            int(
+                pd.to_numeric(df_freebie_logs["log_id"], errors="coerce").max()
+            )
+            + 1
+            if not df_freebie_logs.empty
+            and pd.notna(df_freebie_logs["log_id"].max())
             else 1
         )
         new_log = pd.DataFrame([{
@@ -252,7 +273,7 @@ with tab2:
             "SKU": target_sku,
             "ชื่อของแถม": target_name,
             "ชื่อล็อก": location_in,
-            "จำนวนที่รับเข้า": qty_in,
+            "จำนวนที่รับเข้า": int(qty_in),
             "file_obj": file_path_save,
             "ไฟล์รูป": file_name,
         }])
@@ -260,7 +281,6 @@ with tab2:
             [df_freebie_logs, new_log], ignore_index=True
         )
 
-        # บันทึกลงไฟล์ CSV ถาวร
         df_stock.to_csv(STOCK_FILE, index=False)
         df_freebie_logs.to_csv(LOG_IN_FILE, index=False)
 
@@ -285,11 +305,14 @@ with tab2:
         ):
           st.image(str(lrow["file_obj"]), width=90, caption="รูปปัจจุบัน")
 
-        if st.button("🗑️ ลบรายการรับเข้า", key=f"del_in_{lrow['log_id']}"):
+        if st.button("🗑️ ลบรายการรับเข้า", key=f"del_in_{lrow['log_id']}_{i}"):
           old_qty = int(lrow["จำนวนที่รับเข้า"])
-          if lrow["SKU"] in df_stock["sku"].values:
-            idx_s = df_stock[df_stock["sku"] == lrow["SKU"]].index[0]
-            df_stock.loc[idx_s, "qty"] -= old_qty
+          target_sku_str = str(lrow["SKU"])
+          if target_sku_str in df_stock["sku"].astype(str).values:
+            idx_s = df_stock[df_stock["sku"].astype(str) == target_sku_str].index[
+                0
+            ]
+            df_stock.loc[idx_s, "qty"] = int(df_stock.loc[idx_s, "qty"]) - old_qty
           df_freebie_logs = df_freebie_logs.drop(i).reset_index(drop=True)
 
           df_stock.to_csv(STOCK_FILE, index=False)
@@ -308,14 +331,16 @@ with tab3:
       order_ref = st.text_input(
           "เลขที่ออเดอร์ / Order Ref", placeholder="POS-20260901-001"
       )
-      display_list_out = (df_stock["sku"] + " | " + df_stock["name"]).tolist()
+      display_list_out = (
+          df_stock["sku"].astype(str) + " | " + df_stock["name"].astype(str)
+      ).tolist()
       selected_item_out = st.selectbox(
           "เลือก SKU / ชื่อของแถม", display_list_out
       )
       if selected_item_out:
         target_sku_out = selected_item_out.split(" | ")[0]
         target_name_out = selected_item_out.split(" | ")[1]
-        default_loc_out = df_stock[df_stock["sku"] == target_sku_out][
+        default_loc_out = df_stock[df_stock["sku"].astype(str) == target_sku_out][
             "location"
         ].values[0]
       else:
@@ -331,15 +356,17 @@ with tab3:
           "ยืนยันตัดสต็อกของแถม", type="primary", use_container_width=True
       )
       if submit_out and target_sku_out:
-        current_q = df_stock[df_stock["sku"] == target_sku_out]["qty"].values[0]
+        idx = df_stock[df_stock["sku"].astype(str) == target_sku_out].index[0]
+        current_q = int(df_stock.loc[idx, "qty"])
         if current_q >= qty_out:
-          idx = df_stock[df_stock["sku"] == target_sku_out].index[0]
-          df_stock.loc[idx, "qty"] -= qty_out
+          df_stock.loc[idx, "qty"] = current_q - int(qty_out)
           df_stock.loc[idx, "location"] = location_out
 
           current_lid = (
-              int(df_out_logs["log_id"].max()) + 1
-              if not df_out_logs.empty and pd.notna(df_out_logs["log_id"].max())
+              int(pd.to_numeric(df_out_logs["log_id"], errors="coerce").max())
+              + 1
+              if not df_out_logs.empty
+              and pd.notna(df_out_logs["log_id"].max())
               else 1
           )
           new_out_log = pd.DataFrame([{
@@ -349,7 +376,7 @@ with tab3:
               "SKU": target_sku_out,
               "ชื่อของแถม": target_name_out,
               "ชื่อล็อก": location_out,
-              "จำนวนที่แถมไป": qty_out,
+              "จำนวนที่แถมไป": int(qty_out),
           }])
           df_out_logs = pd.concat([df_out_logs, new_out_log], ignore_index=True)
 
@@ -369,11 +396,14 @@ with tab3:
           f"Log ID: {orow['log_id']} | วันที่: {orow['วันที่']} | ออเดอร์:"
           f" {orow['เลขที่ออเดอร์']} | แจก: -{orow['จำนวนที่แถมไป']}"
       ):
-        if st.button("🗑️ ลบรายการตัดจ่าย", key=f"del_out_{orow['log_id']}"):
+        if st.button("🗑️ ลบรายการตัดจ่าย", key=f"del_out_{orow['log_id']}_{i}"):
           old_qty = int(orow["จำนวนที่แถมไป"])
-          if orow["SKU"] in df_stock["sku"].values:
-            idx_s = df_stock[df_stock["sku"] == orow["SKU"]].index[0]
-            df_stock.loc[idx_s, "qty"] += old_qty
+          target_sku_str = str(orow["SKU"])
+          if target_sku_str in df_stock["sku"].astype(str).values:
+            idx_s = df_stock[df_stock["sku"].astype(str) == target_sku_str].index[
+                0
+            ]
+            df_stock.loc[idx_s, "qty"] = int(df_stock.loc[idx_s, "qty"]) + old_qty
           df_out_logs = df_out_logs.drop(i).reset_index(drop=True)
 
           df_stock.to_csv(STOCK_FILE, index=False)
