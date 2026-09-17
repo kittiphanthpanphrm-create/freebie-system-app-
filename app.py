@@ -107,15 +107,15 @@ st.markdown("""
 
 st.title("🎁 ระบบจัดการสต็อกของแถม")
 
-# Sidebar ตั้งค่าระบบ (ซ่อนรหัสรีเซ็ตไว้ใน Expander)
+# Sidebar ตั้งค่าระบบ (เปลี่ยนชื่อ + ซ่อนรหัสผ่าน)
 with st.sidebar:
   st.markdown("### ⚙️ ตั้งค่าระบบ")
-  with st.expander("🔐 ตั้งค่ารีเซ็ตข้อมูล (PIN 1234)"):
+  with st.expander("🔐 ตั้งค่ารีเซ็ตข้อมูล"):
     reset_pin = st.text_input(
-        "กรอกรหัสยืนยัน",
+        "กรอกรหัสผ่าน",
         type="password",
         key="sidebar_reset_pin",
-        placeholder="1234",
+        placeholder="••••",
     )
     if st.button("🗑️ รีเซ็ต/ล้างข้อมูลทั้งหมด", use_container_width=True):
       if reset_pin == "1234":
@@ -148,7 +148,7 @@ with st.sidebar:
         st.sidebar.success("✅ รีเซ็ตระบบสำเร็จ")
         st.rerun()
       else:
-        st.sidebar.error("❌ รหัสรีเซ็ตไม่ถูกต้อง (กรุณากรอก 1234)")
+        st.sidebar.error("❌ รหัสผ่านไม่ถูกต้อง (กรุณากรอก 1234)")
 
 tab1, tab2, tab3 = st.tabs([
     "📊 สต็อกคงเหลือ",
