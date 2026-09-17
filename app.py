@@ -10,7 +10,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "📊 สต็อกคงเหลือ",
     "📥 รับเข้าของแถม (IN)",
     "📤 ตัดจ่ายตามบิล (OUT)",
-    "⚙️ จัดการ/แก้ไข/ลบ",
+    "⚙️ จัดการสินค้า/ลบ SKU",
 ])
 
 # Initialize Session State
@@ -30,6 +30,7 @@ if "df_freebie" not in st.session_state:
 if "df_freebie_logs" not in st.session_state:
   st.session_state.df_freebie_logs = pd.DataFrame(
       columns=[
+          "log_id",
           "วันที่",
           "SKU",
           "ชื่อของแถม",
@@ -43,6 +44,7 @@ if "df_freebie_logs" not in st.session_state:
 if "df_out_logs" not in st.session_state:
   st.session_state.df_out_logs = pd.DataFrame(
       columns=[
+          "log_id",
           "วันที่",
           "เลขที่ออเดอร์",
           "SKU",
@@ -51,6 +53,9 @@ if "df_out_logs" not in st.session_state:
           "จำนวนที่แถมไป",
       ]
   )
+
+if "log_id_seq" not in st.session_state:
+  st.session_state.log_id_seq = 1
 
 df = st.session_state.df_freebie
 
@@ -130,7 +135,11 @@ with tab2:
           uploaded_file.name if uploaded_file is not None else "ไม่มีรูป"
       )
 
+      current_lid = st.session_state.log_id_seq
+      st.session_state.log_id_seq += 1
+
       new_log = pd.DataFrame([{
+          "log_id": current_lid,
           "วันที่": str(date_in),
           "SKU": target_sku,
           "ชื่อของแถม": target_name,
@@ -150,12 +159,68 @@ with tab2:
       st.rerun()
 
   st.divider()
-  st.subheader("📜 ประวัติการรับเข้าของแถม")
-  if not st.session_state.df_freebie_logs.empty:
-    log_show = st.session_state.df_freebie_logs.drop(
-        columns=["file_obj"], errors="ignore"
-    )
-    st.dataframe(log_show, use_container_width=True)
+  st.subheader("📜 ประวัติการรับเข้าของแถม (แก้ไข/ลบได้)")
+  in_logs = st.session_state.df_freebie_logs
+  if not in_logs.empty:
+    for i, lrow in in_logs.iterrows():
+      with st.expander(
+          f"Log ID: {lrow['log_id']} | วันที่: {lrow['วันที่']} | SKU:"
+          f" {lrow['SKU']} | รับเข้า: +{lrow['จำนวนที่รับเข้า']}"
+      ):
+        c_ed1, c_ed2, c_del = st.columns([2, 2, 2])
+        with c_ed1:
+          edit_qty_val = st.number_input(
+              f"แก้จำนวน (ID {lrow['log_id']})",
+              min_value=1,
+              value=int(lrow["จำนวนที่รับเข้า"]),
+              key=f"in_qty_{lrow['log_id']}",
+          )
+        with c_ed2:
+          st.write(" ")
+          st.write(" ")
+          if st.button("💾 บันทึกแก้รับเข้า", key=f"save_in_{lrow['log_id']}"):
+            old_qty = int(lrow["จำนวนที่รับเข้า"])
+            diff = edit_qty_val - old_qty
+            # ปรับสต็อกหลัก
+            idx_s = df[df["sku"] == lrow["SKU"]].index[0]
+            st.session_state.df_freebie.loc[idx_s, "qty"] += diff
+            # อัปเดต log
+            st.session_state.df_freebie_logs.loc[i, "จำนวนที่รับเข้า"] = (
+                edit_qty_val
+            )
+            st.success("อัปเดตรับเข้าเรียบร้อย!")
+            st.rerun()
+        with c_del:
+          st.write(" ")
+          st.write(" ")
+          if st.button("🗑️ ลบรายการรับเข้า", key=f"del_in_{lrow['log_id']}"):
+            st.session_state[f"confirm_del_in_{lrow['log_id']}"] = True
+
+        if st.session_state.get(f"confirm_del_in_{lrow['log_id']}", False):
+          st.warning(
+              f"⚠️ ยืนยันลบ Log รับเข้า ID {lrow['log_id']}?"
+              f" (จะหักสต็อกคืน -{lrow['จำนวนที่รับเข้า']})"
+          )
+          cy, cn = st.columns(2)
+          with cy:
+            if st.button(
+                "✅ ยืนยันลบรับเข้า", key=f"yes_del_in_{lrow['log_id']}"
+            ):
+              old_qty = int(lrow["จำนวนที่รับเข้า"])
+              idx_s = df[df["sku"] == lrow["SKU"]].index[0]
+              st.session_state.df_freebie.loc[idx_s, "qty"] -= old_qty
+              st.session_state.df_freebie_logs = st.session_state.df_freebie_logs.drop(
+                  i
+              ).reset_index(drop=True)
+              del st.session_state[f"confirm_del_in_{lrow['log_id']}"]
+              st.success("ลบรายการรับเข้าเรียบร้อย!")
+              st.rerun()
+          with cn:
+            if st.button(
+                "❌ ยกเลิก", key=f"no_del_in_{lrow['log_id']}"
+            ):
+              del st.session_state[f"confirm_del_in_{lrow['log_id']}"]
+              st.rerun()
   else:
     st.info("ยังไม่มีประวัติการรับเข้าในรอบนี้")
 
@@ -186,12 +251,14 @@ with tab3:
       current_q = df[df["sku"] == target_sku_out]["qty"].values[0]
       if current_q >= qty_out:
         idx = df[df["sku"] == target_sku_out].index[0]
-        # คำนวณบวกลบหักล้างกับสต็อกหลักทันที
         st.session_state.df_freebie.loc[idx, "qty"] -= qty_out
         st.session_state.df_freebie.loc[idx, "location"] = location_out
 
-        # บันทึกประวัติการตัดจ่ายตามบิล
+        current_lid = st.session_state.log_id_seq
+        st.session_state.log_id_seq += 1
+
         new_out_log = pd.DataFrame([{
+            "log_id": current_lid,
             "วันที่": str(date_out),
             "เลขที่ออเดอร์": order_ref,
             "SKU": target_sku_out,
@@ -212,24 +279,87 @@ with tab3:
         st.error("❌ สต็อกของแถมไม่พอแจก!")
 
   st.divider()
-  st.subheader("📜 ประวัติการตัดจ่ายตามบิล (OUT)")
-  if not st.session_state.df_out_logs.empty:
-    st.dataframe(st.session_state.df_out_logs, use_container_width=True)
+  st.subheader("📜 ประวัติการตัดจ่ายตามบิล (OUT) (แก้ไข/ลบได้)")
+  out_logs = st.session_state.df_out_logs
+  if not out_logs.empty:
+    for i, orow in out_logs.iterrows():
+      with st.expander(
+          f"Log ID: {orow['log_id']} | วันที่: {orow['วันที่']} | ออเดอร์:"
+          f" {orow['เลขที่ออเดอร์']} | SKU: {orow['SKU']} | แจก:"
+          f" -{orow['จำนวนที่แถมไป']}"
+      ):
+        c_ed1, c_ed2, c_del = st.columns([2, 2, 2])
+        with c_ed1:
+          edit_q_out = st.number_input(
+              f"แก้จำนวนแจก (ID {orow['log_id']})",
+              min_value=1,
+              value=int(orow["จำนวนที่แถมไป"]),
+              key=f"out_qty_{orow['log_id']}",
+          )
+        with c_ed2:
+          st.write(" ")
+          st.write(" ")
+          if st.button("💾 บันทึกแก้ตัดจ่าย", key=f"save_out_{orow['log_id']}"):
+            old_qty = int(orow["จำนวนที่แถมไป"])
+            diff = edit_q_out - old_qty
+            # ปรับสต็อกหลัก (เพิ่มคืนถ้าแจกลดลง, ตัดเพิ่มถ้าแจกมากขึ้น)
+            idx_s = df[df["sku"] == orow["SKU"]].index[0]
+            current_q_real = df.loc[idx_s, "qty"]
+            if current_q_real - diff < 0:
+              st.error("สต็อกคงเหลือไม่พอสำหรับการแก้ไขยอดนี้!")
+            else:
+              st.session_state.df_freebie.loc[idx_s, "qty"] -= diff
+              st.session_state.df_out_logs.loc[i, "จำนวนที่แถมไป"] = edit_q_out
+              st.success("อัปเดตตัดจ่ายเรียบร้อย!")
+              st.rerun()
+        with c_del:
+          st.write(" ")
+          st.write(" ")
+          if st.button(
+              "🗑️ ลบรายการตัดจ่าย", key=f"del_out_{orow['log_id']}"
+          ):
+            st.session_state[f"confirm_del_out_{orow['log_id']}"] = True
+
+        if st.session_state.get(f"confirm_del_out_{orow['log_id']}", False):
+          st.warning(
+              f"⚠️ ยืนยันลบ Log ตัดจ่าย ID {orow['log_id']}? (จะคืนสต็อกกลับ"
+              f" +{orow['จำนวนที่แถมไป']})"
+          )
+          cy, cn = st.columns(2)
+          with cy:
+            if st.button(
+                "✅ ยืนยันลบตัดจ่าย", key=f"yes_del_out_{orow['log_id']}"
+            ):
+              old_qty = int(orow["จำนวนที่แถมไป"])
+              idx_s = df[df["sku"] == orow["SKU"]].index[0]
+              st.session_state.df_freebie.loc[idx_s, "qty"] += old_qty
+              st.session_state.df_out_logs = st.session_state.df_out_logs.drop(
+                  i
+              ).reset_index(drop=True)
+              del st.session_state[f"confirm_del_out_{orow['log_id']}"]
+              st.success("ลบรายการตัดจ่ายเรียบร้อย!")
+              st.rerun()
+          with cn:
+            if st.button(
+                "❌ ยกเลิก", key=f"no_del_out_{orow['log_id']}"
+            ):
+              del st.session_state[f"confirm_del_out_{orow['log_id']}"]
+              st.rerun()
   else:
     st.info("ยังไม่มีประวัติการตัดจ่ายในรอบนี้")
 
 with tab4:
-  st.subheader("⚙️ แก้ไขหรือลบรายการของแถม")
+  st.subheader("⚙️ จัดการ SKU สินค้า / ลบ SKU")
   target_sku_mgmt = st.selectbox(
       "เลือก SKU ของแถมที่ต้องการจัดการ", df["sku"].tolist()
   )
 
   col_btn1, col_btn2 = st.columns(2)
   with col_btn1:
-    if st.button("✏️ แก้ไขข้อมูล"):
+    if st.button("✏️ แก้ไขข้อมูล SKU หลัก"):
       st.session_state["edit_target"] = target_sku_mgmt
   with col_btn2:
-    if st.button("🗑️ ลบรายการนี้"):
+    if st.button("🗑️ ลบ SKU นี้ออกจากระบบ"):
       st.session_state["confirm_del_target"] = target_sku_mgmt
 
   if st.session_state.get("confirm_del_target") == target_sku_mgmt:
@@ -244,7 +374,7 @@ with tab4:
             st.session_state.df_freebie["sku"] != target_sku_mgmt
         ].reset_index(drop=True)
         del st.session_state["confirm_del_target"]
-        st.success("ลบรายการเรียบร้อย!")
+        st.success("ลบ SKU เรียบร้อย!")
         st.rerun()
     with c_no:
       if st.button("❌ ยกเลิกการลบ"):
@@ -261,7 +391,7 @@ with tab4:
     st.markdown(f"--- \n **กำลังแก้ไข SKU: {target_sku_mgmt}**")
     with st.form("edit_form_mgmt"):
       new_n = st.text_input("ชื่อของแถม", value=c_name)
-      new_q = st.number_input("จำนวนคงเหลือ", value=c_qty, min_value=0)
+      new_q = st.number_input("จำนวนคงเหลือตั้งต้น", value=c_qty, min_value=0)
       new_m = st.number_input("จุดแจ้งเตือนขั้นต่ำ", value=c_min, min_value=0)
       new_l = st.text_input("ชื่อล็อกจัดเก็บ", value=c_loc)
 
