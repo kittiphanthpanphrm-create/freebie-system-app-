@@ -2,10 +2,10 @@ import pandas as pd
 import streamlit as st
 
 st.set_page_config(
-    page_title="ระบบสต็อกของแถม", page_icon="🎁", layout="wide"
+    page_title="สต็อกของแถม", page_icon="🎁", layout="wide"
 )
 
-# หัวข้อหลักตามที่ต้องการ
+# หัวข้อหลักตามที่ต้องการแก้ไข
 st.title("🎁 สต็อกของแถม")
 
 tab1, tab2, tab3 = st.tabs(
