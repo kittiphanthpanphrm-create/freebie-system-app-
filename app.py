@@ -221,7 +221,7 @@ with tab2:
     location_in = st.text_input("ชื่อล็อกที่จัดเก็บของแถม", value=default_loc)
     qty_in = st.number_input("จำนวนที่รับเข้า", min_value=1, value=10)
     uploaded_file = st.file_uploader(
-        "📸 รูปถ่ายสินค้า", type=["jpg", "jpeg", "png"]
+        "📸 รูปถ่ายสินค้า (คอม / มือถือ)", type=["jpg", "jpeg", "png"]
     )
 
     submit_in = st.form_submit_button(
@@ -253,7 +253,9 @@ with tab2:
         file_path_save = None
         if uploaded_file is not None:
           os.makedirs("uploads", exist_ok=True)
-          file_path_save = os.path.join("uploads", uploaded_file.name)
+          file_path_save = os.path.join(
+              "uploads", f"{int(datetime.datetime.now().timestamp())}_{uploaded_file.name}"
+          )
           with open(file_path_save, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
@@ -289,35 +291,82 @@ with tab2:
         st.rerun()
 
   st.divider()
-  st.subheader("📜 ประวัติการรับเข้าของแถม")
+  st.subheader("📜 ประวัติการรับเข้าของแถม (แก้ไขจำนวน / เปลี่ยนรูป)")
   if not df_freebie_logs.empty and not df_stock.empty:
     for i, lrow in df_freebie_logs.iterrows():
       with st.expander(
           f"Log ID: {lrow['log_id']} | วันที่: {lrow['วันที่']} | SKU:"
           f" {lrow['SKU']} | รับเข้า: +{lrow['จำนวนที่รับเข้า']}"
       ):
-        if (
-            "file_obj" in lrow
-            and pd.notna(lrow["file_obj"])
-            and str(lrow["file_obj"]) != "None"
-            and os.path.exists(str(lrow["file_obj"]))
-        ):
-          st.image(str(lrow["file_obj"]), width=90, caption="รูปปัจจุบัน")
+        c_img_prev, c_ed1, c_del = st.columns([1.5, 2.5, 1.5])
+        with c_img_prev:
+          if (
+              "file_obj" in lrow
+              and pd.notna(lrow["file_obj"])
+              and str(lrow["file_obj"]) != "None"
+              and os.path.exists(str(lrow["file_obj"]))
+          ):
+            st.image(str(lrow["file_obj"]), width=90, caption="รูปปัจจุบัน")
+          else:
+            st.caption("ไม่มีรูป")
 
-        if st.button("🗑️ ลบรายการรับเข้า", key=f"del_in_{lrow['log_id']}_{i}"):
-          old_qty = int(lrow["จำนวนที่รับเข้า"])
-          target_sku_str = str(lrow["SKU"])
-          if target_sku_str in df_stock["sku"].astype(str).values:
-            idx_s = df_stock[df_stock["sku"].astype(str) == target_sku_str].index[
-                0
-            ]
-            df_stock.loc[idx_s, "qty"] = int(df_stock.loc[idx_s, "qty"]) - old_qty
-          df_freebie_logs = df_freebie_logs.drop(i).reset_index(drop=True)
+        with c_ed1:
+          edit_qty_val = st.number_input(
+              f"แก้จำนวน (ID {lrow['log_id']})",
+              min_value=1,
+              value=int(lrow["จำนวนที่รับเข้า"]),
+              key=f"in_qty_edit_{i}",
+          )
+          edit_file_val = st.file_uploader(
+              "แนบ/เปลี่ยนรูป (คอม/มือถือ)",
+              type=["jpg", "jpeg", "png"],
+              key=f"in_file_edit_{i}",
+          )
+          if st.button("💾 บันทึกแก้รับเข้า", key=f"save_in_edit_{i}"):
+            old_qty = int(lrow["จำนวนที่รับเข้า"])
+            diff = edit_qty_val - old_qty
+            target_sku_str = str(lrow["SKU"])
+            if target_sku_str in df_stock["sku"].astype(str).values:
+              idx_s = df_stock[
+                  df_stock["sku"].astype(str) == target_sku_str
+              ].index[0]
+              df_stock.loc[idx_s, "qty"] = (
+                  int(df_stock.loc[idx_s, "qty"]) + diff
+              )
+            df_freebie_logs.at[i, "จำนวนที่รับเข้า"] = edit_qty_val
+            if edit_file_val is not None:
+              os.makedirs("uploads", exist_ok=True)
+              new_path = os.path.join(
+                  "uploads", f"{int(datetime.datetime.now().timestamp())}_{edit_file_val.name}"
+              )
+              with open(new_path, "wb") as f:
+                f.write(edit_file_val.getbuffer())
+              df_freebie_logs.at[i, "file_obj"] = new_path
+              df_freebie_logs.at[i, "ไฟล์รูป"] = edit_file_val.name
 
-          df_stock.to_csv(STOCK_FILE, index=False)
-          df_freebie_logs.to_csv(LOG_IN_FILE, index=False)
-          st.success("ลบรายการเรียบร้อย!")
-          st.rerun()
+            df_stock.to_csv(STOCK_FILE, index=False)
+            df_freebie_logs.to_csv(LOG_IN_FILE, index=False)
+            st.success("อัปเดตข้อมูลรับเข้าเรียบร้อย!")
+            st.rerun()
+
+        with c_del:
+          st.write(" ")
+          if st.button("🗑️ ลบรายการรับเข้า", key=f"del_in_{lrow['log_id']}_{i}"):
+            old_qty = int(lrow["จำนวนที่รับเข้า"])
+            target_sku_str = str(lrow["SKU"])
+            if target_sku_str in df_stock["sku"].astype(str).values:
+              idx_s = df_stock[
+                  df_stock["sku"].astype(str) == target_sku_str
+              ].index[0]
+              df_stock.loc[idx_s, "qty"] = (
+                  int(df_stock.loc[idx_s, "qty"]) - old_qty
+              )
+            df_freebie_logs = df_freebie_logs.drop(i).reset_index(drop=True)
+
+            df_stock.to_csv(STOCK_FILE, index=False)
+            df_freebie_logs.to_csv(LOG_IN_FILE, index=False)
+            st.success("ลบรายการเรียบร้อย!")
+            st.rerun()
   else:
     st.info("ยังไม่มีประวัติการรับเข้า")
 
@@ -339,9 +388,9 @@ with tab3:
       if selected_item_out:
         target_sku_out = selected_item_out.split(" | ")[0]
         target_name_out = selected_item_out.split(" | ")[1]
-        default_loc_out = df_stock[df_stock["sku"].astype(str) == target_sku_out][
-            "location"
-        ].values[0]
+        default_loc_out = df_stock[
+            df_stock["sku"].astype(str) == target_sku_out
+        ]["location"].values[0]
       else:
         target_sku_out, target_name_out, default_loc_out = "", "", ""
 
@@ -399,10 +448,12 @@ with tab3:
           old_qty = int(orow["จำนวนที่แถมไป"])
           target_sku_str = str(orow["SKU"])
           if target_sku_str in df_stock["sku"].astype(str).values:
-            idx_s = df_stock[df_stock["sku"].astype(str) == target_sku_str].index[
-                0
-            ]
-            df_stock.loc[idx_s, "qty"] = int(df_stock.loc[idx_s, "qty"]) + old_qty
+            idx_s = df_stock[
+                df_stock["sku"].astype(str) == target_sku_str
+            ].index[0]
+            df_stock.loc[idx_s, "qty"] = (
+                int(df_stock.loc[idx_s, "qty"]) + old_qty
+            )
           df_out_logs = df_out_logs.drop(i).reset_index(drop=True)
 
           df_stock.to_csv(STOCK_FILE, index=False)
