@@ -29,7 +29,14 @@ if "df_freebie" not in st.session_state:
 
 if "df_freebie_logs" not in st.session_state:
   st.session_state.df_freebie_logs = pd.DataFrame(
-      columns=["วันที่", "SKU", "ชื่อของแถม", "ชื่อล็อก", "จำนวนที่รับเข้า"]
+      columns=[
+          "วันที่",
+          "SKU",
+          "ชื่อของแถม",
+          "ชื่อล็อก",
+          "จำนวนที่รับเข้า",
+          "ไฟล์รูป",
+      ]
   )
 
 df = st.session_state.df_freebie
@@ -56,11 +63,21 @@ with tab2:
     location_in = st.text_input("ชื่อล็อกที่จัดเก็บของแถม", value=default_loc)
     qty_in = st.number_input("จำนวนที่รับเข้า", min_value=1, value=10)
 
+    # เพิ่มช่องอัปโหลดรูป / ถ่ายจากมือถือ
+    uploaded_file = st.file_uploader(
+        "📸 รูปถ่ายสินค้า (อัปโหลดจากคอม หรือ ถ่ายจากมือถือ)",
+        type=["jpg", "jpeg", "png"],
+    )
+
     submit_in = st.form_submit_button("บันทึกรับเข้าของแถม")
     if submit_in:
       idx = df[df["sku"] == target_sku].index[0]
       st.session_state.df_freebie.loc[idx, "qty"] += qty_in
       st.session_state.df_freebie.loc[idx, "location"] = location_in
+
+      file_name = (
+          uploaded_file.name if uploaded_file is not None else "ไม่มีรูป"
+      )
 
       new_log = pd.DataFrame([{
           "วันที่": str(date_in),
@@ -68,6 +85,7 @@ with tab2:
           "ชื่อของแถม": target_name,
           "ชื่อล็อก": location_in,
           "จำนวนที่รับเข้า": qty_in,
+          "ไฟล์รูป": file_name,
       }])
       st.session_state.df_freebie_logs = pd.concat(
           [st.session_state.df_freebie_logs, new_log], ignore_index=True
@@ -122,7 +140,6 @@ with tab4:
     if st.button("🗑️ ลบรายการนี้"):
       st.session_state["confirm_del_target"] = target_sku_mgmt
 
-  # ส่วนยืนยันการลบ
   if st.session_state.get("confirm_del_target") == target_sku_mgmt:
     st.warning(
         f"⚠️ คุณแน่ใจหรือไม่ที่จะลบ SKU: {target_sku_mgmt}"
@@ -142,7 +159,6 @@ with tab4:
         del st.session_state["confirm_del_target"]
         st.rerun()
 
-  # ส่วนฟอร์มแก้ไขข้อมูล
   if st.session_state.get("edit_target") == target_sku_mgmt:
     row_idx = df[df["sku"] == target_sku_mgmt].index[0]
     c_name = df.loc[row_idx, "name"]
