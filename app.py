@@ -107,44 +107,48 @@ st.markdown("""
 
 st.title("🎁 ระบบจัดการสต็อกของแถม")
 
-# Sidebar ตั้งค่าระบบ (ล็อก PIN 1234)
+# Sidebar ตั้งค่าระบบ (ซ่อนรหัสรีเซ็ตไว้ใน Expander)
 with st.sidebar:
   st.markdown("### ⚙️ ตั้งค่าระบบ")
-  reset_pin = st.text_input(
-      "รหัสยืนยันรีเซ็ต (1234)", type="password", key="sidebar_reset_pin"
-  )
-  if st.button("🗑️ รีเซ็ต/ล้างข้อมูลทั้งหมด", use_container_width=True):
-    if reset_pin == "1234":
-      st.session_state["df_freebie"] = pd.DataFrame(
-          columns=["sku", "name", "qty", "min_qty", "location"]
-      )
-      st.session_state["df_freebie_logs"] = pd.DataFrame(
-          columns=[
-              "log_id",
-              "วันที่",
-              "SKU",
-              "ชื่อของแถม",
-              "ชื่อล็อก",
-              "จำนวนที่รับเข้า",
-              "file_obj",
-              "ไฟล์รูป",
-          ]
-      )
-      st.session_state["df_out_logs"] = pd.DataFrame(
-          columns=[
-              "log_id",
-              "วันที่",
-              "เลขที่ออเดอร์",
-              "SKU",
-              "ชื่อของแถม",
-              "ชื่อล็อก",
-              "จำนวนที่แถมไป",
-          ]
-      )
-      st.sidebar.success("✅ รีเซ็ตระบบสำเร็จ")
-      st.rerun()
-    else:
-      st.sidebar.error("❌ รหัสรีเซ็ตไม่ถูกต้อง (กรุณากรอก 1234)")
+  with st.expander("🔐 ตั้งค่ารีเซ็ตข้อมูล (PIN 1234)"):
+    reset_pin = st.text_input(
+        "กรอกรหัสยืนยัน",
+        type="password",
+        key="sidebar_reset_pin",
+        placeholder="1234",
+    )
+    if st.button("🗑️ รีเซ็ต/ล้างข้อมูลทั้งหมด", use_container_width=True):
+      if reset_pin == "1234":
+        st.session_state["df_freebie"] = pd.DataFrame(
+            columns=["sku", "name", "qty", "min_qty", "location"]
+        )
+        st.session_state["df_freebie_logs"] = pd.DataFrame(
+            columns=[
+                "log_id",
+                "วันที่",
+                "SKU",
+                "ชื่อของแถม",
+                "ชื่อล็อก",
+                "จำนวนที่รับเข้า",
+                "file_obj",
+                "ไฟล์รูป",
+            ]
+        )
+        st.session_state["df_out_logs"] = pd.DataFrame(
+            columns=[
+                "log_id",
+                "วันที่",
+                "เลขที่ออเดอร์",
+                "SKU",
+                "ชื่อของแถม",
+                "ชื่อล็อก",
+                "จำนวนที่แถมไป",
+            ]
+        )
+        st.sidebar.success("✅ รีเซ็ตระบบสำเร็จ")
+        st.rerun()
+      else:
+        st.sidebar.error("❌ รหัสรีเซ็ตไม่ถูกต้อง (กรุณากรอก 1234)")
 
 tab1, tab2, tab3 = st.tabs([
     "📊 สต็อกคงเหลือ",
