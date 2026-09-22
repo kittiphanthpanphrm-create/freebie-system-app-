@@ -98,6 +98,17 @@ with st.sidebar:
         if os.path.exists(LOG_OUT_FILE):
             with open(LOG_OUT_FILE, "rb") as f:
                 st.download_button("⬇️ โหลด Log_OUT.csv", f, file_name="log_out_data.csv", use_container_width=True)
+        
+        st.divider()
+        up_stock = st.file_uploader("⬆️ กู้คืน Stock.csv", type=["csv"], key="restore_stock")
+        if up_stock is not None:
+            with open(STOCK_FILE, "wb") as f: f.write(up_stock.getbuffer())
+            st.success("✅ กู้คืน Stock สำเร็จ รีเฟรชหน้าเว็บ 1 ครั้ง")
+            
+        up_in = st.file_uploader("⬆️ กู้คืน Log_IN.csv", type=["csv"], key="restore_in")
+        if up_in is not None:
+            with open(LOG_IN_FILE, "wb") as f: f.write(up_in.getbuffer())
+            st.success("✅ กู้คืน Log_IN สำเร็จ รีเฟรชหน้าเว็บ 1 ครั้ง")
 
 tab1, tab2, tab3, tab4 = st.tabs(["📊 สต็อกคงเหลือ", "📥 รับเข้า (IN)", "📤 จ่ายออก/แถม (OUT)", "📈 รายงานเคลื่อนไหว"])
 
@@ -163,7 +174,7 @@ with tab2:
         date_in = st.date_input("วันที่รับเข้า", value=datetime.date.today())
         location_in = st.text_input("ชื่อล็อกที่จัดเก็บ", value=default_loc)
         qty_in = st.number_input("จำนวนที่รับเข้า", min_value=1, value=10)
-        uploaded_file = st.file_uploader("📸 รูปถ่ายสินค้า", type=["jpg", "jpeg", "png"])
+        uploaded_file = st.file_uploader("📸 รูปถ่ายสินค้า (คอม / มือถือ)", type=["jpg", "jpeg", "png"])
         
         submit_in = st.form_submit_button("💾 บันทึกรับเข้า", type="primary", use_container_width=True)
         
