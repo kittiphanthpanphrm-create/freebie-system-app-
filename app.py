@@ -254,7 +254,7 @@ with tab2:
     selected_item = st.selectbox("เลือก SKU / ชื่อของแถม", display_list)
     if selected_item:
       parts = selected_item.split(" | ")
-      target_sku = parts[0]
+      target_sku = parts
       target_name = parts if len(parts) > 1 else ""
       default_loc = df_stock[df_stock["sku"] == target_sku][
           "location"
@@ -433,7 +433,7 @@ with tab3:
       )
       if selected_item_out:
         parts_out = selected_item_out.split(" | ")
-        target_sku_out = parts_out[0]
+        target_sku_out = parts_out
         target_name_out = parts_out if len(parts_out) > 1 else ""
         default_loc_out = df_stock[
             df_stock["sku"].astype(str) == target_sku_out
@@ -493,7 +493,7 @@ with tab3:
           f" {orow['เลขที่ออเดอร์']} | สินค้า: {item_name_str} | แจก:"
           f" -{orow['จำนวนที่แถมไป']}"
       ):
-        c_ed_out, c_del_out = st.columns()
+        c_ed_out, c_del_out = st.columns(2)
         with c_ed_out:
           edit_q_out = st.number_input(
               f"แก้จำนวนแจก (ID {orow['log_id']})",
