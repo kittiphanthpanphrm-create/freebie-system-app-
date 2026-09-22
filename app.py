@@ -253,8 +253,9 @@ with tab2:
     ).tolist()
     selected_item = st.selectbox("เลือก SKU / ชื่อของแถม", display_list)
     if selected_item:
-      target_sku = selected_item.split(" | ")[0]
-      target_name = selected_item.split(" | ")
+      parts = selected_item.split(" | ")
+      target_sku = parts[0]
+      target_name = parts if len(parts) > 1 else ""
       default_loc = df_stock[df_stock["sku"] == target_sku][
           "location"
       ].values[0]
@@ -431,8 +432,9 @@ with tab3:
           "เลือก SKU / ชื่อของแถม", display_list_out
       )
       if selected_item_out:
-        target_sku_out = selected_item_out.split(" | ")[0]
-        target_name_out = selected_item_out.split(" | ")
+        parts_out = selected_item_out.split(" | ")
+        target_sku_out = parts_out[0]
+        target_name_out = parts_out if len(parts_out) > 1 else ""
         default_loc_out = df_stock[
             df_stock["sku"].astype(str) == target_sku_out
         ]["location"].values[0]
