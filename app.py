@@ -189,7 +189,7 @@ with tab1:
 
     for idx, row in df_stock.iterrows():
       with st.container(border=True):
-        c_img, c_info = st.columns([1, 3], gap="medium")
+        c_img, c_info = st.columns(, gap="medium")
         with c_img:
           img_displayed = False
           if not df_freebie_logs.empty:
@@ -199,6 +199,7 @@ with tab1:
                   "file_obj" in l_row
                   and pd.notna(l_row["file_obj"])
                   and str(l_row["file_obj"]) != "None"
+                  and os.path.exists(str(l_row["file_obj"]))
               ):
                 st.image(
                     str(l_row["file_obj"]), width=130, caption="ภาพรับเข้าล่าสุด"
@@ -253,7 +254,7 @@ with tab2:
     selected_item = st.selectbox("เลือก SKU / ชื่อของแถม", display_list)
     if selected_item:
       target_sku = selected_item.split(" | ")[0]
-      target_name = selected_item.split(" | ")[1]
+      target_name = selected_item.split(" | ")
       default_loc = df_stock[df_stock["sku"] == target_sku][
           "location"
       ].values[0]
@@ -431,7 +432,7 @@ with tab3:
       )
       if selected_item_out:
         target_sku_out = selected_item_out.split(" | ")[0]
-        target_name_out = selected_item_out.split(" | ")[1]
+        target_name_out = selected_item_out.split(" | ")
         default_loc_out = df_stock[
             df_stock["sku"].astype(str) == target_sku_out
         ]["location"].values[0]
@@ -490,7 +491,7 @@ with tab3:
           f" {orow['เลขที่ออเดอร์']} | สินค้า: {item_name_str} | แจก:"
           f" -{orow['จำนวนที่แถมไป']}"
       ):
-        c_ed_out, c_del_out = st.columns([3, 1])
+        c_ed_out, c_del_out = st.columns()
         with c_ed_out:
           edit_q_out = st.number_input(
               f"แก้จำนวนแจก (ID {orow['log_id']})",
